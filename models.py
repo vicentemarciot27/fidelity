@@ -3,28 +3,9 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, INET, BYTEA
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func, text
 import uuid
-import enum
 from database import Base
-
-# Definição de enums
-class ScopeEnum(str, enum.Enum):
-    GLOBAL = "GLOBAL"
-    CUSTOMER = "CUSTOMER"
-    FRANCHISE = "FRANCHISE"
-    STORE = "STORE"
-
-class RedeemTypeEnum(str, enum.Enum):
-    BRL = "BRL"
-    PERCENTAGE = "PERCENTAGE"
-    FREE_SKU = "FREE_SKU"
-
-class CouponStatusEnum(str, enum.Enum):
-    CREATED = "CREATED"
-    ISSUED = "ISSUED"
-    RESERVED = "RESERVED"
-    REDEEMED = "REDEEMED"
-    CANCELLED = "CANCELLED"
-    EXPIRED = "EXPIRED"
+# Importamos todos os enums do arquivo centralizado
+from enums import ScopeEnum, RedeemTypeEnum, CouponStatusEnum, UserRoleEnum, StaffRoleEnum, ActionTypeEnum, AssetTypeEnum, OutboxStatusEnum, OrderSourceEnum
 
 # Entidades principais
 class Customer(Base):
@@ -92,7 +73,7 @@ class AppUser(Base):
     person_id = Column(UUID(as_uuid=True), ForeignKey("person.id", ondelete="CASCADE"), unique=True, nullable=False)
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    role = Column(String, nullable=False, default="USER")
+    role = Column(SQLEnum(UserRoleEnum), nullable=False, default=UserRoleEnum.USER)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     
@@ -241,7 +222,7 @@ class Order(Base):
     shipping = Column(JSONB)
     checkout_ref = Column(String)
     external_id = Column(String)
-    source = Column(String, nullable=False, default="PDV")
+    source = Column(SQLEnum(OrderSourceEnum), nullable=False, default=OrderSourceEnum.PDV)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     
     store = relationship("Store", back_populates="orders")
@@ -276,10 +257,10 @@ class StoreStaff(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("app_user.id", ondelete="CASCADE"), nullable=False)
     store_id = Column(UUID(as_uuid=True), ForeignKey("store.id", ondelete="CASCADE"), nullable=False)
-    role = Column(String, nullable=False)
+    role = Column(SQLEnum(StaffRoleEnum), nullable=False)
     
     __table_args__ = (
-        CheckConstraint("role IN ('STORE_MANAGER', 'CASHIER')"),
+        # Constraint não é mais necessária pois o enum já garante os valores válidos
     )
     
     user = relationship("AppUser", back_populates="store_staff")
@@ -324,13 +305,13 @@ class OfferAsset(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     offer_id = Column(UUID(as_uuid=True), ForeignKey("coupon_offer.id", ondelete="CASCADE"), nullable=False)
-    kind = Column(String, nullable=False)
+    kind = Column(SQLEnum(AssetTypeEnum), nullable=False)
     url = Column(String, nullable=False)
     position = Column(Integer, nullable=False, default=0)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     
     __table_args__ = (
-        CheckConstraint("kind IN ('BANNER', 'THUMB', 'DETAIL')"),
+        # Constraint não é mais necessária pois o enum já garante os valores válidos
     )
     
     offer = relationship("CouponOffer", back_populates="assets")
@@ -373,7 +354,7 @@ class OutboxEvent(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     topic = Column(String, nullable=False)
     payload = Column(JSONB, nullable=False)
-    status = Column(String, nullable=False, default="PENDING")
+    status = Column(SQLEnum(OutboxStatusEnum), nullable=False, default=OutboxStatusEnum.PENDING)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     sent_at = Column(TIMESTAMP(timezone=True))
 

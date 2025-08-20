@@ -24,6 +24,7 @@ from dotenv import load_dotenv
 
 from database import get_db, engine, Base
 import models
+from enums import UserRoleEnum, StaffRoleEnum, CouponStatusEnum, ActionTypeEnum, OutboxStatusEnum
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -111,7 +112,7 @@ class UserCreate(BaseModel):
     name: str
     cpf: str
     phone: Optional[str] = None
-    role: str = "USER"
+    role: UserRoleEnum = UserRoleEnum.USER
 
 # Wallet schemas
 class PointBalance(BaseModel):
@@ -221,7 +222,7 @@ def get_current_active_user(current_user: models.AppUser = Depends(get_current_u
     return current_user
 
 def get_admin_user(current_user: models.AppUser = Depends(get_current_user)):
-    if current_user.role != "ADMIN":
+    if current_user.role != UserRoleEnum.ADMIN:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return current_user
 
@@ -374,12 +375,12 @@ def login(form_data: UserLogin, db: Session = Depends(get_db)):
     }
     
     # Adicionar customer_id para roles específicas
-    if user.role in ["CUSTOMER_ADMIN", "FRANCHISE_MANAGER", "STORE_MANAGER", "CASHIER"]:
+    if user.role in [UserRoleEnum.CUSTOMER_ADMIN, UserRoleEnum.FRANCHISE_MANAGER, UserRoleEnum.STORE_MANAGER, UserRoleEnum.CASHIER]:
         # Obter customer_id, franchise_id, store_id conforme a role
-        if user.role == "CUSTOMER_ADMIN":
+        if user.role == UserRoleEnum.CUSTOMER_ADMIN:
             # Lógica para obter customer_id para admin de cliente
             pass
-        elif user.role in ["FRANCHISE_MANAGER", "STORE_MANAGER", "CASHIER"]:
+        elif user.role in [UserRoleEnum.FRANCHISE_MANAGER, UserRoleEnum.STORE_MANAGER, UserRoleEnum.CASHIER]:
             # Obter store_staff e relacionados
             staff = db.query(models.StoreStaff).filter(models.StoreStaff.user_id == user.id).first()
             if staff:
@@ -456,12 +457,12 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
     }
     
     # Adicionar customer_id para roles específicas (similar à rota de login)
-    if user.role in ["CUSTOMER_ADMIN", "FRANCHISE_MANAGER", "STORE_MANAGER", "CASHIER"]:
+    if user.role in [UserRoleEnum.CUSTOMER_ADMIN, UserRoleEnum.FRANCHISE_MANAGER, UserRoleEnum.STORE_MANAGER, UserRoleEnum.CASHIER]:
         # Obter customer_id, franchise_id, store_id conforme a role
-        if user.role == "CUSTOMER_ADMIN":
+        if user.role == UserRoleEnum.CUSTOMER_ADMIN:
             # Lógica para obter customer_id para admin de cliente
             pass
-        elif user.role in ["FRANCHISE_MANAGER", "STORE_MANAGER", "CASHIER"]:
+        elif user.role in [UserRoleEnum.FRANCHISE_MANAGER, UserRoleEnum.STORE_MANAGER, UserRoleEnum.CASHIER]:
             # Obter store_staff e relacionados
             staff = db.query(models.StoreStaff).filter(models.StoreStaff.user_id == user.id).first()
             if staff:
@@ -929,7 +930,7 @@ def buy_coupon(
         count = db.query(models.Coupon).filter(
             models.Coupon.offer_id == offer.id,
             models.Coupon.issued_to_person_id == current_user.person_id,
-            models.Coupon.status.in_(["ISSUED", "RESERVED"])
+            models.Coupon.status.in_([CouponStatusEnum.ISSUED, CouponStatusEnum.RESERVED])
         ).count()
         
         if count >= offer.max_per_customer:
@@ -954,7 +955,7 @@ def buy_coupon(
             offer_id=offer.id,
             issued_to_person_id=current_user.person_id,
             code_hash=code_hash,
-            status="ISSUED"
+            status=CouponStatusEnum.ISSUED
         )
         
         # Decrementar estoque
@@ -970,7 +971,7 @@ def buy_coupon(
         # Registrar auditoria
         audit = models.AuditLog(
             actor_user_id=current_user.id,
-            action="COUPON_ISSUE",
+            action=ActionTypeEnum.COUPON_ISSUE,
             target_table="coupon",
             target_id=str(coupon.id)
         )
@@ -1065,7 +1066,7 @@ def attempt_coupon(
     
     # Encontrar cupom por hash de código (essa consulta poderia ser otimizada)
     coupons = db.query(models.Coupon).filter(
-        models.Coupon.status.in_(["ISSUED", "RESERVED"])
+        models.Coupon.status.in_([CouponStatusEnum.ISSUED, CouponStatusEnum.RESERVED])
     ).all()
     
     coupon = None
@@ -1167,7 +1168,7 @@ def attempt_coupon(
             models.Coupon.id == coupon.id
         ).with_for_update().first()
         
-        if coupon_for_update.status not in ["ISSUED", "RESERVED"]:
+        if coupon_for_update.status not in [CouponStatusEnum.ISSUED, CouponStatusEnum.RESERVED]:
             db.rollback()
             return {
                 "coupon_id": coupon.id,
@@ -1176,7 +1177,7 @@ def attempt_coupon(
             }
         
         # Atualizar status para RESERVED
-        coupon_for_update.status = "RESERVED"
+        coupon_for_update.status = CouponStatusEnum.RESERVED
         db.commit()
         
         return {
@@ -1214,7 +1215,7 @@ def redeem_coupon(
     # Verificar se o cupom existe e está reservado
     coupon = db.query(models.Coupon).filter(
         models.Coupon.id == data.coupon_id,
-        models.Coupon.status == "RESERVED"
+        models.Coupon.status == CouponStatusEnum.RESERVED
     ).with_for_update().first()
     
     if not coupon:
@@ -1225,7 +1226,7 @@ def redeem_coupon(
     
     try:
         # Atualizar status para REDEEMED
-        coupon.status = "REDEEMED"
+        coupon.status = CouponStatusEnum.REDEEMED
         coupon.redeemed_at = datetime.utcnow()
         
         if data.order:
@@ -1252,7 +1253,7 @@ def redeem_coupon(
                 "redeemed_at": coupon.redeemed_at.isoformat(),
                 "order_id": data.order_id if data.order_id else None
             },
-            status="PENDING"
+            status=OutboxStatusEnum.PENDING
         )
         db.add(event)
         
@@ -1444,4 +1445,6 @@ def create_tables():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    from dotenv import load_dotenv
+    load_dotenv()
+    uvicorn.run(app, host="localhost", port=os.getenv("PORT", 8007))
