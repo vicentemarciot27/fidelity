@@ -1,0 +1,29 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: fidelity_postgres
+    environment:
+      POSTGRES_DB: fidelity
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Script para criar extensões necessárias
+      - ./init-extensions.sql:/docker-entrypoint-initdb.d/init-extensions.sql
+    restart: unless-stopped
+
+  # Interface web para visualizar/editar banco
+  adminer:
+    image: adminer:latest
+    container_name: fidelity_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

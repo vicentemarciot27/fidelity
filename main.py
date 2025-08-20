@@ -14,7 +14,7 @@ import secrets
 import time
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field, validator, UUID4
-import jwt
+from jose import jwt
 from decimal import Decimal
 import qrcode
 import io
