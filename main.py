@@ -14,7 +14,7 @@ import secrets
 import time
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field, validator, UUID4
-import jwt
+import jwt as pyjwt
 from decimal import Decimal
 import qrcode
 import io
@@ -176,7 +176,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode.update({"exp": expire.timestamp()})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = pyjwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 def get_password_hash(password: str) -> str:
@@ -197,13 +197,13 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         if token.startswith(JWT_PREFIX):
             token = token[len(JWT_PREFIX):]
             
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = pyjwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("user_id")
         if user_id is None:
             raise credentials_exception
         
         token_data = TokenData(**payload)
-    except jwt.PyJWTError:
+    except pyjwt.PyJWTError:
         raise credentials_exception
     
     user = db.query(models.AppUser).filter(models.AppUser.id == token_data.user_id).first()
@@ -1444,4 +1444,4 @@ def create_tables():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8007)
