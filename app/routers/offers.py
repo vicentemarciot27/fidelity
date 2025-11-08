@@ -8,7 +8,7 @@ from sqlalchemy import or_, func
 from pydantic import UUID4
 from typing import Optional
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 import secrets
 import bcrypt
 import hashlib
@@ -20,6 +20,7 @@ from database import get_db
 from ..models import user as user_models
 from ..models import coupons as coupon_models
 from ..models import system as system_models
+from ..models.enums import CouponStatusEnum, RedeemTypeEnum
 from ..schemas.coupons import BuyCouponRequest, BuyCouponResponse
 from ..core.security import get_current_active_user
 
@@ -268,7 +269,7 @@ def buy_coupon(
         )
     
     # Verificar janela de validade
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if offer.start_at and offer.start_at > now:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -290,12 +291,20 @@ def buy_coupon(
     
     # Verificar limite por cliente
     if offer.max_per_customer > 0:
-        count = db.query(coupon_models.Coupon).filter(
-            coupon_models.Coupon.offer_id == offer.id,
-            coupon_models.Coupon.issued_to_person_id == current_user.person_id,
-            coupon_models.Coupon.status.in_(["ISSUED", "RESERVED"])
-        ).count()
-        
+        active_statuses = [
+            CouponStatusEnum.ISSUED,
+            CouponStatusEnum.RESERVED,
+        ]
+        count = (
+            db.query(func.count(coupon_models.Coupon.id))
+            .filter(
+                coupon_models.Coupon.offer_id == offer.id,
+                coupon_models.Coupon.issued_to_person_id == current_user.person_id,
+                coupon_models.Coupon.status.in_(active_statuses),
+            )
+            .scalar()
+        )
+
         if count >= offer.max_per_customer:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -318,7 +327,7 @@ def buy_coupon(
             offer_id=offer.id,
             issued_to_person_id=current_user.person_id,
             code_hash=code_hash,
-            status="ISSUED"
+            status=CouponStatusEnum.ISSUED
         )
         
         # Decrementar estoque

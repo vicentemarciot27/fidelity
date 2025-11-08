@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import math
 
 from database import get_db
@@ -16,9 +16,10 @@ from ..models import coupons as coupon_models
 from ..models import orders as order_models
 from ..models import points as points_models
 from ..models import system as system_models
+from ..models.enums import CouponStatusEnum, RedeemTypeEnum
 from ..schemas.coupons import AttemptCouponRequest, AttemptCouponResponse, RedeemCouponRequest
 from ..schemas.points import EarnPointsRequest, EarnPointsResponse
-from .offers import hash_coupon_code, verify_coupon_code
+from .offers import verify_coupon_code
 
 router = APIRouter(prefix="/pdv", tags=["pdv"])
 
@@ -40,19 +41,16 @@ def attempt_coupon(
     Se válido, reserva o cupom temporariamente para evitar uso duplicado.
     """
     # Encontrar o cupom pelo código (hash)
-    code_hash = hash_coupon_code(data.code)
-    
-    # Encontrar cupom por hash de código (essa consulta poderia ser otimizada)
+    active_statuses = [CouponStatusEnum.ISSUED, CouponStatusEnum.RESERVED]
     coupons = db.query(coupon_models.Coupon).filter(
-        coupon_models.Coupon.status.in_(["ISSUED", "RESERVED"])
+        coupon_models.Coupon.status.in_(active_statuses)
     ).all()
-    
-    coupon = None
-    for c in coupons:
-        if verify_coupon_code(data.code, c.code_hash):
-            coupon = c
-            break
-    
+
+    coupon = next(
+        (c for c in coupons if verify_coupon_code(data.code, c.code_hash)),
+        None,
+    )
+
     if not coupon:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -72,7 +70,7 @@ def attempt_coupon(
         )
     
     # Verificar janela de validade
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if offer.start_at and offer.start_at > now:
         return {
             "coupon_id": coupon.id,
@@ -97,12 +95,20 @@ def attempt_coupon(
         }
     
     # Verificar se é específico para SKUs
-    if coupon_type.sku_specific and data.items:
+    if coupon_type.sku_specific:
         if not coupon_type.valid_skus:
             return {
                 "coupon_id": coupon.id,
                 "redeemable": False,
                 "message": "Coupon requires specific SKUs but none are defined"
+            }
+        
+        # Se items não foram fornecidos, não é válido
+        if not data.items:
+            return {
+                "coupon_id": coupon.id,
+                "redeemable": False,
+                "message": "Coupon requires items with valid SKUs"
             }
         
         # Verificar se algum dos itens possui SKU válido
@@ -121,41 +127,65 @@ def attempt_coupon(
     
     # Calcular desconto
     discount = None
-    if coupon_type.redeem_type == "BRL" and coupon_type.discount_amount_brl:
+    redeem_type = coupon_type.redeem_type
+    if isinstance(redeem_type, RedeemTypeEnum):
+        redeem_type = redeem_type.value
+    else:
+        redeem_type = str(redeem_type)
+
+    if redeem_type == RedeemTypeEnum.PERCENTAGE.value and coupon_type.discount_amount_percentage:
+        percentage = float(coupon_type.discount_amount_percentage)
+        amount = float(data.order_total_brl) * percentage / 100.0
         discount = {
-            "type": "BRL",
-            "amount_brl": float(coupon_type.discount_amount_brl)
-        }
-    elif coupon_type.redeem_type == "PERCENTAGE" and coupon_type.discount_amount_percentage:
-        amount = float(data.order_total_brl) * float(coupon_type.discount_amount_percentage) / 100.0
-        discount = {
-            "type": "PERCENTAGE",
-            "percentage": float(coupon_type.discount_amount_percentage),
+            "type": RedeemTypeEnum.PERCENTAGE.value,
+            "percentage": percentage,
             "amount_brl": amount
         }
-    elif coupon_type.redeem_type == "FREE_SKU" and coupon_type.valid_skus and data.items:
+    elif redeem_type == RedeemTypeEnum.BRL.value and coupon_type.discount_amount_brl:
         discount = {
-            "type": "FREE_SKU",
+            "type": RedeemTypeEnum.BRL.value,
+            "amount_brl": float(coupon_type.discount_amount_brl)
+        }
+    elif redeem_type == RedeemTypeEnum.FREE_SKU.value and coupon_type.valid_skus and data.items:
+        discount = {
+            "type": RedeemTypeEnum.FREE_SKU.value,
             "valid_skus": coupon_type.valid_skus
         }
     
     # Reservar o cupom (transação)
     try:
-        # Fazer SELECT FOR UPDATE
+        # Fazer SELECT FOR UPDATE para garantir consistência
         coupon_for_update = db.query(coupon_models.Coupon).filter(
             coupon_models.Coupon.id == coupon.id
         ).with_for_update().first()
-        
-        if coupon_for_update.status not in ["ISSUED", "RESERVED"]:
+
+        if not coupon_for_update:
+            db.rollback()
+            return {
+                "coupon_id": coupon.id,
+                "redeemable": False,
+                "message": "Coupon not found or already redeemed"
+            }
+
+        current_status = coupon_for_update.status
+        if isinstance(current_status, CouponStatusEnum):
+            current_status = current_status.value
+
+        allowed_status_values = {
+            CouponStatusEnum.ISSUED.value,
+            CouponStatusEnum.RESERVED.value,
+        }
+
+        if str(current_status) not in allowed_status_values:
             db.rollback()
             return {
                 "coupon_id": coupon.id,
                 "redeemable": False,
                 "message": "Coupon has already been redeemed or is no longer available"
             }
-        
+
         # Atualizar status para RESERVED
-        coupon_for_update.status = "RESERVED"
+        coupon_for_update.status = CouponStatusEnum.RESERVED
         db.commit()
         
         return {
@@ -191,7 +221,7 @@ def redeem_coupon(
     # Verificar se o cupom existe e está reservado
     coupon = db.query(coupon_models.Coupon).filter(
         coupon_models.Coupon.id == data.coupon_id,
-        coupon_models.Coupon.status == "RESERVED"
+        coupon_models.Coupon.status == CouponStatusEnum.RESERVED
     ).with_for_update().first()
     
     if not coupon:
@@ -202,8 +232,8 @@ def redeem_coupon(
     
     try:
         # Atualizar status para REDEEMED
-        coupon.status = "REDEEMED"
-        coupon.redeemed_at = datetime.utcnow()
+        coupon.status = CouponStatusEnum.REDEEMED
+        coupon.redeemed_at = datetime.now(timezone.utc)
         
         if data.order:
             # Criar registro de pedido se fornecido
@@ -341,7 +371,7 @@ def earn_points(
         # Calcular data de expiração
         expires_at = None
         if point_rule.expires_in_days:
-            expires_at = datetime.utcnow() + timedelta(days=point_rule.expires_in_days)
+            expires_at = datetime.now(timezone.utc) + timedelta(days=point_rule.expires_in_days)
         
         # Criar registro de pedido
         order = order_models.Order(

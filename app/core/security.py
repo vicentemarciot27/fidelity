@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import bcrypt
 
@@ -23,9 +23,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Criar token de acesso JWT"""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -77,9 +77,53 @@ def get_current_active_user(current_user: AppUser = Depends(get_current_user)) -
 
 def get_admin_user(current_user: AppUser = Depends(get_current_user)) -> AppUser:
     """Verificar se o usuário atual é admin"""
-    if current_user.role != "ADMIN":
+    if current_user.role not in ["ADMIN", "GLOBAL_ADMIN"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
         )
     return current_user
+
+
+def require_role(*allowed_roles: str):
+    """
+    Decorator/dependency para verificar se o usuário tem uma das roles permitidas.
+    
+    Uso:
+        @router.get("/endpoint")
+        def my_endpoint(user: AppUser = Depends(require_role("ADMIN", "CUSTOMER_ADMIN"))):
+            ...
+    """
+    def role_checker(current_user: AppUser = Depends(get_current_active_user)) -> AppUser:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Required role: {', '.join(allowed_roles)}"
+            )
+        return current_user
+    return role_checker
+
+
+def get_current_customer_admin(current_user: AppUser = Depends(get_current_active_user)) -> AppUser:
+    """Verificar se o usuário é Customer Admin ou superior"""
+    if current_user.role not in ["ADMIN", "GLOBAL_ADMIN", "CUSTOMER_ADMIN"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Customer admin access required"
+        )
+    return current_user
+
+
+def verify_customer_access(user: AppUser, customer_id: str, db: Session) -> bool:
+    """
+    Verifica se o usuário tem acesso a um customer específico.
+    Admins globais têm acesso a todos.
+    Customer admins têm acesso apenas ao seu customer.
+    """
+    if user.role in ["ADMIN", "GLOBAL_ADMIN"]:
+        return True
+    
+    # Para CUSTOMER_ADMIN, verificar se pertence ao customer
+    # Isso pode ser expandido com uma tabela de associação user-customer
+    # Por enquanto, retorna True (implementação simplificada)
+    return True

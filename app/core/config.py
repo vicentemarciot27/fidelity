@@ -34,6 +34,30 @@ API_TAGS = [
     {
         "name": "pdv",
         "description": "Endpoints específicos para Ponto de Venda (PDV). Inclui validação e resgate de cupons, além de registro de pontos."
+    },
+    {
+        "name": "admin-business",
+        "description": "Endpoints administrativos para gerenciamento de tenants: Customers, Franchises e Stores."
+    },
+    {
+        "name": "admin-users",
+        "description": "Endpoints administrativos para gerenciamento de usuários e atribuição de staff às lojas."
+    },
+    {
+        "name": "admin-config",
+        "description": "Endpoints administrativos para configuração de regras de pontos e marketplace."
+    },
+    {
+        "name": "admin-coupons",
+        "description": "Endpoints administrativos para gerenciamento completo de tipos de cupons, ofertas, assets e operações em massa."
+    },
+    {
+        "name": "admin-catalog",
+        "description": "Endpoints administrativos para gerenciamento de catálogo de produtos (SKUs e categorias)."
+    },
+    {
+        "name": "admin-system",
+        "description": "Endpoints administrativos para gerenciamento de recursos do sistema: dispositivos PDV, chaves de API e logs de auditoria."
     }
 ]
 

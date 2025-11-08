@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydantic import UUID4
 import bcrypt
 import secrets
@@ -85,7 +85,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         db_refresh_token = user_models.RefreshToken(
             user_id=new_user.id,
             token_hash=refresh_token_hash,
-            expires_at=datetime.utcnow() + timedelta(days=30)
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30)
         )
         db.add(db_refresh_token)
         db.commit()
@@ -161,7 +161,7 @@ def login(form_data: UserLogin, db: Session = Depends(get_db)):
     db_refresh_token = user_models.RefreshToken(
         user_id=user.id,
         token_hash=refresh_token_hash,
-        expires_at=datetime.utcnow() + timedelta(days=30)
+        expires_at=datetime.now(timezone.utc) + timedelta(days=30)
     )
     db.add(db_refresh_token)
     db.commit()
@@ -225,7 +225,7 @@ def oauth2_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session =
     db_refresh_token = user_models.RefreshToken(
         user_id=user.id,
         token_hash=refresh_token_hash,
-        expires_at=datetime.utcnow() + timedelta(days=30)
+        expires_at=datetime.now(timezone.utc) + timedelta(days=30)
     )
     db.add(db_refresh_token)
     db.commit()
@@ -249,7 +249,7 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
     # Verificar refresh token
     db_refresh_tokens = db.query(user_models.RefreshToken).filter(
         user_models.RefreshToken.revoked_at == None,
-        user_models.RefreshToken.expires_at > datetime.utcnow()
+        user_models.RefreshToken.expires_at > datetime.now(timezone.utc)
     ).all()
     
     user = None
@@ -304,13 +304,13 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
     new_refresh_token_hash = bcrypt.hashpw(new_refresh_token.encode(), bcrypt.gensalt())
     
     # Revogar token antigo
-    db_token.revoked_at = datetime.utcnow()
+    db_token.revoked_at = datetime.now(timezone.utc)
     
     # Salvar novo refresh token
     db_refresh_token = user_models.RefreshToken(
         user_id=user.id,
         token_hash=new_refresh_token_hash,
-        expires_at=datetime.utcnow() + timedelta(days=30)
+        expires_at=datetime.now(timezone.utc) + timedelta(days=30)
     )
     
     db.add(db_refresh_token)
@@ -336,7 +336,7 @@ def logout(
     db.query(user_models.RefreshToken).filter(
         user_models.RefreshToken.user_id == current_user.id,
         user_models.RefreshToken.revoked_at == None
-    ).update({"revoked_at": datetime.utcnow()})
+    ).update({"revoked_at": datetime.now(timezone.utc)})
     
     db.commit()
     
@@ -370,7 +370,7 @@ def register_device(
         )
     
     # Marcar device como utilizado/registrado
-    device.last_seen_at = datetime.utcnow()
+    device.last_seen_at = datetime.now(timezone.utc)
     db.commit()
     
     return {

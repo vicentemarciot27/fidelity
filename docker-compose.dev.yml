@@ -15,6 +15,22 @@ services:
       - ./init-extensions.sql:/docker-entrypoint-initdb.d/init-extensions.sql
     restart: unless-stopped
 
+  # PostgreSQL Test Database
+  postgres_test:
+    image: postgres:15
+    container_name: fidelity_postgres_test
+    environment:
+      POSTGRES_DB: fidelity_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      # Script para criar extensões necessárias
+      - ./init-extensions.sql:/docker-entrypoint-initdb.d/init-extensions.sql
+    restart: unless-stopped
+
   # Interface web para visualizar/editar banco
   adminer:
     image: adminer:latest
@@ -23,7 +39,9 @@ services:
       - "8080:8080"
     depends_on:
       - postgres
+      - postgres_test
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  postgres_test_data:
