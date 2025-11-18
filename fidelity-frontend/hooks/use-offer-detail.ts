@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, apiFetch } from '../lib/api-client';
 import type { CouponOfferDetail } from '../lib/api-types';
+import { useAuth } from '../components/providers/auth-provider';
 
 export function useOfferDetail(offerId: string | null) {
+  const { status } = useAuth();
   const [data, setData] = useState<CouponOfferDetail | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(offerId));
@@ -27,8 +29,13 @@ export function useOfferDetail(offerId: string | null) {
   }, [offerId]);
 
   useEffect(() => {
-    void fetchOffer();
-  }, [fetchOffer]);
+    // Only fetch when auth is ready and we have an offerId
+    if (status === 'authenticated' && offerId) {
+      void fetchOffer();
+    } else if (status === 'unauthenticated' || !offerId) {
+      setIsLoading(false);
+    }
+  }, [fetchOffer, status, offerId]);
 
   return {
     offer: data,

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, apiFetch } from '../lib/api-client';
 import type { CouponOffer, PaginatedResponse } from '../lib/api-types';
+import { useAuth } from '../components/providers/auth-provider';
 
 type OfferFilters = {
   scope?: string | null;
@@ -14,6 +15,7 @@ type OfferFilters = {
 };
 
 export function useOffers(filters: OfferFilters = {}) {
+  const { status } = useAuth();
   const [data, setData] = useState<PaginatedResponse<CouponOffer> | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,8 +47,13 @@ export function useOffers(filters: OfferFilters = {}) {
   }, [filters.active, filters.page, filters.page_size, filters.scope, filters.scope_id, filters.search]);
 
   useEffect(() => {
-    void fetchOffers();
-  }, [fetchOffers]);
+    // Only fetch when auth is ready
+    if (status === 'authenticated') {
+      void fetchOffers();
+    } else if (status === 'unauthenticated') {
+      setIsLoading(false);
+    }
+  }, [fetchOffers, status]);
 
   return {
     offers: data,

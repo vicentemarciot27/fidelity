@@ -83,13 +83,8 @@ def list_customers(
 ):
     """
     Lista todos os clientes com paginação.
-    Requer permissão de ADMIN.
+    Acesso permitido para todos.
     """
-    if current_user.role not in ["ADMIN", "GLOBAL_ADMIN"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can list customers"
-        )
     
     query = db.query(business_models.Customer)
     
@@ -112,13 +107,8 @@ def get_customer(
 ):
     """
     Retorna detalhes de um cliente específico.
+    Acesso permitido para usuários autenticados.
     """
-    if current_user.role not in ["ADMIN", "GLOBAL_ADMIN"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can view customer details"
-        )
-    
     customer = db.query(business_models.Customer).filter(
         business_models.Customer.id == customer_id
     ).first()

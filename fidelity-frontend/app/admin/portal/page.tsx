@@ -11,6 +11,7 @@ import {
 import { useAdminCouponTypes } from '../../../hooks/use-admin-coupon-types';
 import { useAdminOfferDetail } from '../../../hooks/use-admin-offer-detail';
 import { ADMIN_ROLES } from '../../../lib/roles';
+import type { AdminCouponType } from '../../../lib/api-types';
 
 export default function AdminPortalPage() {
   const { user } = useAuth();
@@ -54,286 +55,284 @@ export default function AdminPortalPage() {
 
   return (
     <Protected roles={ADMIN_ROLES}>
-      <div className="flex flex-col gap-8">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-slate-900">
-            Admin operations
-          </h1>
-          <p className="text-sm text-slate-500">
-            Manage coupon types, publish offers, and monitor inventory. Logged in
-            as <strong>{user?.role}</strong>.
-          </p>
-        </header>
-
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Create coupon type
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Define how discounts behave. These types can be reused across
-              multiple offers.
-            </p>
-            <div className="mt-4">
-              <CouponTypeForm onCreated={refreshCouponTypes} />
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Publish coupon offer
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Target stores, franchises, or the entire customer. Inventory starts
-              at the initial quantity and decrements as coupons are issued.
-            </p>
-            <div className="mt-4">
-              <CouponOfferForm
-                couponTypes={couponTypeItems}
-                onCreated={() => {
-                  refreshCouponOffers();
-                  refreshCouponTypes();
-                }}
-              />
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Coupon types
-              </h2>
-              <p className="text-sm text-slate-500">
-                Overview of reusable discount definitions.
+      <div className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-7xl px-6 py-10">
+          <div className="flex flex-col gap-8">
+            <header className="flex flex-col gap-2">
+              <h1 className="text-3xl font-bold text-slate-900">
+                Painel Administrativo
+              </h1>
+              <p className="text-base text-slate-600">
+                Gerencie tipos de cupons, publique ofertas e monitore o estoque. 
+                Logado como <strong className="font-semibold text-slate-900">{user?.role}</strong>
               </p>
-            </div>
-            <button
-              type="button"
-              onClick={refreshCouponTypes}
-              className="rounded-md border border-slate-300 px-3 py-1 text-sm text-slate-600 transition hover:bg-slate-100"
-            >
-              Refresh
-            </button>
-          </div>
+            </header>
 
-          {typesLoading ? (
-            <Placeholder message="Loading coupon types…" />
-          ) : couponTypeItems.length > 0 ? (
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead>
-                  <tr className="text-xs uppercase tracking-wide text-slate-500">
-                    <th className="px-3 py-2">Type</th>
-                    <th className="px-3 py-2">SKU specific</th>
-                    <th className="px-3 py-2">Discount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {couponTypeItems.map((type) => (
-                    <tr key={type.id} className="hover:bg-slate-50">
-                      <td className="px-3 py-2 font-medium text-slate-700">
-                        {type.redeem_type}
-                      </td>
-                      <td className="px-3 py-2">{type.sku_specific ? 'Yes' : 'No'}</td>
-                      <td className="px-3 py-2 text-slate-600">
-                        {formatDiscount(type)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <Placeholder message="No coupon types created yet." />
-          )}
-        </section>
-
-        <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Coupon offers
-              </h2>
-              <p className="text-sm text-slate-500">
-                Filter by scope or status to focus on active campaigns.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-              <select
-                value={scopeFilter}
-                onChange={(event) => {
-                  setScopeFilter(event.target.value);
-                  setOffersPage(1);
-                }}
-                className="rounded-md border border-slate-300 px-3 py-1 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              >
-                <option value="">All scopes</option>
-                <option value="CUSTOMER">Customer</option>
-                <option value="FRANCHISE">Franchise</option>
-                <option value="STORE">Store</option>
-              </select>
-              <select
-                value={activeFilter}
-                onChange={(event) => {
-                  setActiveFilter(event.target.value as typeof activeFilter);
-                  setOffersPage(1);
-                }}
-                className="rounded-md border border-slate-300 px-3 py-1 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
-              >
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-              <button
-                type="button"
-                onClick={refreshCouponOffers}
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm text-slate-600 transition hover:bg-slate-100"
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-
-          {offersLoading ? (
-            <Placeholder message="Loading offers…" />
-          ) : couponOfferItems.length > 0 ? (
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead>
-                  <tr className="text-xs uppercase tracking-wide text-slate-500">
-                    <th className="px-3 py-2">Scope</th>
-                    <th className="px-3 py-2">Inventory</th>
-                    <th className="px-3 py-2">Window</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {couponOfferItems.map((offer) => (
-                    <tr key={offer.id} className="hover:bg-slate-50">
-                      <td className="px-3 py-2 font-medium text-slate-700">
-                        {offer.entity_scope}
-                        <div className="text-xs text-slate-500">{offer.entity_id}</div>
-                      </td>
-                      <td className="px-3 py-2 text-slate-600">
-                        {offer.current_quantity}/{offer.initial_quantity}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600">
-                        {formatWindow(offer.start_at, offer.end_at)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${offer.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}
-                        >
-                          {offer.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedOfferId(offer.id)}
-                          className="text-sm font-medium text-slate-600 underline decoration-slate-300 hover:text-slate-900"
-                        >
-                          View details
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <Placeholder message="No coupon offers published yet." />
-          )}
-
-          {couponOffers?.pages && couponOffers.pages > 1 ? (
-            <div className="mt-4 flex items-center justify-end gap-3 text-sm text-slate-600">
-              <button
-                type="button"
-                disabled={offersPage === 1}
-                onClick={() => setOffersPage((prev) => Math.max(prev - 1, 1))}
-                className="rounded-md border border-slate-300 px-3 py-1 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Previous
-              </button>
-              <span>
-                Page {offersPage} of {couponOffers.pages}
-              </span>
-              <button
-                type="button"
-                disabled={offersPage === couponOffers.pages}
-                onClick={() =>
-                  setOffersPage((prev) =>
-                    couponOffers ? Math.min(prev + 1, couponOffers.pages) : prev,
-                  )
-                }
-                className="rounded-md border border-slate-300 px-3 py-1 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Next
-              </button>
-            </div>
-          ) : null}
-        </section>
-
-        {selectedOfferId ? (
-          <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Offer metrics
+            <section className="grid gap-6 lg:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+                <h2 className="text-xl font-bold text-slate-900">
+                  Criar Tipo de Cupom
                 </h2>
-                <p className="text-sm text-slate-500">
-                  Real-time inventory and redemption trends for{' '}
-                  <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">
-                    {selectedOfferId}
-                  </code>
+                <p className="mt-2 text-sm text-slate-600">
+                  Defina como os descontos funcionam. Esses tipos podem ser reutilizados em múltiplas ofertas.
                 </p>
+                <div className="mt-6">
+                  <CouponTypeForm onCreated={refreshCouponTypes} />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedOfferId(null)}
-                  className="text-sm text-slate-600 underline decoration-slate-300 hover:text-slate-900"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedOfferId(selectedOfferId)}
-                  className="rounded-md border border-slate-300 px-3 py-1 text-sm text-slate-600 transition hover:bg-slate-100"
-                >
-                  Refresh
-                </button>
-              </div>
-            </div>
 
-            {detailLoading ? (
-              <Placeholder message="Loading offer statistics…" />
-            ) : selectedOffer && selectedStats ? (
-              <div className="mt-4 grid gap-6 lg:grid-cols-2">
-                <div className="space-y-3">
-                  <Metric label="Initial quantity" value={selectedOffer.initial_quantity} />
-                  <Metric label="Current quantity" value={selectedOffer.current_quantity} />
-                  <Metric label="Active status" value={selectedOffer.is_active ? 'Active' : 'Inactive'} />
-                  <Metric
-                    label="Redemption window"
-                    value={formatWindow(selectedOffer.start_at, selectedOffer.end_at)}
+              <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+                <h2 className="text-xl font-bold text-slate-900">
+                  Publicar Oferta de Cupom
+                </h2>
+                <p className="mt-2 text-sm text-slate-600">
+                  Direcione para lojas, franquias ou todo o cliente. O estoque inicia na quantidade inicial e diminui conforme cupons são emitidos.
+                </p>
+                <div className="mt-6">
+                  <CouponOfferForm
+                    couponTypes={couponTypeItems}
+                    onCreated={() => {
+                      refreshCouponOffers();
+                      refreshCouponTypes();
+                    }}
                   />
                 </div>
-                <div className="space-y-3">
-                  <Metric label="Issued" value={selectedStats.total_issued} />
-                  <Metric label="Reserved" value={selectedStats.total_reserved} />
-                  <Metric label="Redeemed" value={selectedStats.total_redeemed} />
-                  <Metric label="Expired" value={selectedStats.total_expired} />
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Tipos de Cupons
+                  </h2>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Visão geral das definições de desconto reutilizáveis.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={refreshCouponTypes}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Atualizar
+                </button>
+              </div>
+
+              {typesLoading ? (
+                <Placeholder message="Carregando tipos de cupons..." />
+              ) : couponTypeItems.length > 0 ? (
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                  <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+                    <thead className="bg-slate-50">
+                      <tr className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                        <th className="px-4 py-3">Tipo</th>
+                        <th className="px-4 py-3">SKU Específico</th>
+                        <th className="px-4 py-3">Desconto</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {couponTypeItems.map((type) => (
+                        <tr key={type.id} className="hover:bg-slate-50 transition">
+                          <td className="px-4 py-3 font-medium text-slate-900">
+                            {type.redeem_type}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">{type.sku_specific ? 'Sim' : 'Não'}</td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {formatDiscount(type)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <Placeholder message="Nenhum tipo de cupom criado ainda." />
+              )}
+            </section>
+
+            <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Ofertas de Cupons
+                  </h2>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Filtre por escopo ou status para focar em campanhas ativas.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <select
+                    value={scopeFilter}
+                    onChange={(event) => {
+                      setScopeFilter(event.target.value);
+                      setOffersPage(1);
+                    }}
+                    className="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <option value="">Todos escopos</option>
+                    <option value="CUSTOMER">Cliente</option>
+                    <option value="FRANCHISE">Franquia</option>
+                    <option value="STORE">Loja</option>
+                  </select>
+                  <select
+                    value={activeFilter}
+                    onChange={(event) => {
+                      setActiveFilter(event.target.value as typeof activeFilter);
+                      setOffersPage(1);
+                    }}
+                    className="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <option value="all">Todos</option>
+                    <option value="active">Ativos</option>
+                    <option value="inactive">Inativos</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={refreshCouponOffers}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Atualizar
+                  </button>
                 </div>
               </div>
-            ) : (
-              <Placeholder message="Unable to load metrics for this offer." />
-            )}
-          </section>
-        ) : null}
+
+              {offersLoading ? (
+                <Placeholder message="Carregando ofertas..." />
+              ) : couponOfferItems.length > 0 ? (
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                  <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+                    <thead className="bg-slate-50">
+                      <tr className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                        <th className="px-4 py-3">Escopo</th>
+                        <th className="px-4 py-3">Estoque</th>
+                        <th className="px-4 py-3">Janela</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {couponOfferItems.map((offer) => (
+                        <tr key={offer.id} className="hover:bg-slate-50 transition">
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-slate-900">{offer.entity_scope}</div>
+                            <div className="text-xs text-slate-500">{offer.entity_id}</div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-600 font-medium">
+                            {offer.current_quantity}/{offer.initial_quantity}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600 text-xs">
+                            {formatWindow(offer.start_at, offer.end_at)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${offer.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}
+                            >
+                              {offer.is_active ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOfferId(offer.id)}
+                              className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                            >
+                              Ver detalhes
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <Placeholder message="Nenhuma oferta de cupom publicada ainda." />
+              )}
+
+              {couponOffers?.pages && couponOffers.pages > 1 ? (
+                <div className="mt-6 flex items-center justify-end gap-3 text-sm">
+                  <button
+                    type="button"
+                    disabled={offersPage === 1}
+                    onClick={() => setOffersPage((prev) => Math.max(prev - 1, 1))}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-slate-600">
+                    Página <strong className="text-slate-900">{offersPage}</strong> de {couponOffers.pages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={offersPage === couponOffers.pages}
+                    onClick={() =>
+                      setOffersPage((prev) =>
+                        couponOffers ? Math.min(prev + 1, couponOffers.pages) : prev,
+                      )
+                    }
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Próxima
+                  </button>
+                </div>
+              ) : null}
+            </section>
+
+            {selectedOfferId ? (
+              <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">
+                      Métricas da Oferta
+                    </h2>
+                    <p className="text-sm text-slate-600 mt-1">
+                      Estoque em tempo real e tendências de resgate para{' '}
+                      <code className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-700">
+                        {selectedOfferId}
+                      </code>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOfferId(null)}
+                      className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      Fechar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOfferId(selectedOfferId)}
+                      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    >
+                      Atualizar
+                    </button>
+                  </div>
+                </div>
+
+                {detailLoading ? (
+                  <Placeholder message="Carregando estatísticas da oferta..." />
+                ) : selectedOffer && selectedStats ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <Metric label="Quantidade inicial" value={selectedOffer.initial_quantity} />
+                    <Metric label="Quantidade atual" value={selectedOffer.current_quantity} />
+                    <Metric label="Status" value={selectedOffer.is_active ? 'Ativa' : 'Inativa'} />
+                    <Metric
+                      label="Janela de resgate"
+                      value={formatWindow(selectedOffer.start_at, selectedOffer.end_at)}
+                    />
+                    <Metric label="Emitidos" value={selectedStats.total_issued} />
+                    <Metric label="Reservados" value={selectedStats.total_reserved} />
+                    <Metric label="Resgatados" value={selectedStats.total_redeemed} />
+                    <Metric label="Expirados" value={selectedStats.total_expired} />
+                  </div>
+                ) : (
+                  <Placeholder message="Não foi possível carregar as métricas desta oferta." />
+                )}
+              </section>
+            ) : null}
+          </div>
+        </div>
       </div>
     </Protected>
   );
@@ -341,13 +340,13 @@ export default function AdminPortalPage() {
 
 function Placeholder({ message }: { message: string }) {
   return (
-    <div className="mt-4 rounded-md border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+    <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center text-sm text-slate-500">
       {message}
     </div>
   );
 }
 
-function formatDiscount(type: ReturnType<typeof useAdminCouponTypes>['couponTypes']['items'][number]) {
+function formatDiscount(type: AdminCouponType) {
   if (type.redeem_type === 'BRL' && type.discount_amount_brl !== null) {
     return `R$ ${Number(type.discount_amount_brl).toFixed(2)}`;
   }
@@ -355,22 +354,32 @@ function formatDiscount(type: ReturnType<typeof useAdminCouponTypes>['couponType
     return `${Number(type.discount_amount_percentage)}%`;
   }
   if (type.redeem_type === 'FREE_SKU') {
-    return (type.valid_skus ?? []).join(', ') || 'Free selected SKU';
+    return (type.valid_skus ?? []).join(', ') || 'Produto Grátis Selecionado';
   }
   return 'N/A';
 }
 
 function formatWindow(start: string | null, end: string | null) {
-  const startText = start ? new Date(start).toLocaleString('pt-BR') : 'Immediate';
-  const endText = end ? new Date(end).toLocaleString('pt-BR') : 'Open ended';
+  const startText = start ? new Date(start).toLocaleString('pt-BR', { 
+    day: '2-digit', 
+    month: 'short', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  }) : 'Imediato';
+  const endText = end ? new Date(end).toLocaleString('pt-BR', { 
+    day: '2-digit', 
+    month: 'short', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  }) : 'Sem prazo';
   return `${startText} → ${endText}`;
 }
 
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-slate-900">{value}</p>
+    <div className="rounded-lg border border-slate-200 from-slate-50 to-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">{label}</p>
+      <p className="text-2xl font-bold text-slate-900">{value}</p>
     </div>
   );
 }

@@ -159,7 +159,7 @@ def sample_customer(db):
     """
     customer = business_models.Customer(
         id=uuid4(),
-        name="Test Customer",
+        name="Acme Corporation",
         cnpj=generate_unique_cnpj(),
         contact_email=generate_unique_email(),
         phone="1133334444"
@@ -178,7 +178,7 @@ def sample_franchise(db, sample_customer):
     franchise = business_models.Franchise(
         id=uuid4(),
         customer_id=sample_customer.id,
-        name="Test Franchise",
+        name="Acme São Paulo",
         cnpj=generate_unique_cnpj()
     )
     db.add(franchise)
@@ -195,9 +195,9 @@ def sample_store(db, sample_franchise):
     store = business_models.Store(
         id=uuid4(),
         franchise_id=sample_franchise.id,
-        name="Test Store",
+        name="Acme Loja Paulista",
         cnpj=generate_unique_cnpj(),
-        location={"address": "123 Test St"}
+        location={"address": "Av. Paulista, 1000", "city": "São Paulo", "state": "SP"}
     )
     db.add(store)
     db.commit()

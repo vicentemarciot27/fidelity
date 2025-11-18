@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api-client';
 import type { Customer, Franchise, Store, PaginatedResponse } from '../lib/api-types';
+import { useAuth } from '../components/providers/auth-provider';
 
 export function useCustomers() {
+  const { status } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,13 +28,19 @@ export function useCustomers() {
       }
     };
 
-    fetchCustomers();
-  }, []);
+    // Only fetch when auth is ready
+    if (status === 'authenticated') {
+      fetchCustomers();
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
+    }
+  }, [status]);
 
   return { customers, loading, error };
 }
 
 export function useFranchises(customerId?: string) {
+  const { status } = useAuth();
   const [franchises, setFranchises] = useState<Franchise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,13 +62,19 @@ export function useFranchises(customerId?: string) {
       }
     };
 
-    fetchFranchises();
-  }, [customerId]);
+    // Only fetch when auth is ready
+    if (status === 'authenticated') {
+      fetchFranchises();
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
+    }
+  }, [customerId, status]);
 
   return { franchises, loading, error };
 }
 
 export function useStores(franchiseId?: string) {
+  const { status } = useAuth();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,8 +96,13 @@ export function useStores(franchiseId?: string) {
       }
     };
 
-    fetchStores();
-  }, [franchiseId]);
+    // Only fetch when auth is ready
+    if (status === 'authenticated') {
+      fetchStores();
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
+    }
+  }, [franchiseId, status]);
 
   return { stores, loading, error };
 }

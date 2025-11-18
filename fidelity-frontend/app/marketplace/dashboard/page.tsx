@@ -26,78 +26,82 @@ export default function MarketplaceDashboard() {
 
   return (
     <Protected>
-      <div className="flex flex-col gap-8">
-        <header className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-900">
-                Welcome back
-              </h1>
-              <p className="text-sm text-slate-500">
-                Review your point balances and explore current coupon offers.
-              </p>
-            </div>
-            <div className="inline-flex rounded-md border border-slate-200 bg-white p-1 text-sm shadow-sm">
-              <ToggleButton
-                isActive={displayAs === 'points'}
-                onClick={() => setDisplayAs('points')}
-              >
-                Points
-              </ToggleButton>
-              <ToggleButton
-                isActive={displayAs === 'brl'}
-                onClick={() => setDisplayAs('brl')}
-              >
-                BRL
-              </ToggleButton>
-            </div>
-          </div>
-        </header>
+      <div className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-7xl px-6 py-10">
+          <div className="flex flex-col gap-8">
+            <header className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-3xl font-bold text-slate-900">
+                    Bem-vindo ao Marketplace
+                  </h1>
+                  <p className="text-base text-slate-600 mt-1">
+                    Confira seu saldo de pontos e explore as ofertas disponíveis
+                  </p>
+                </div>
+                <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm shadow-sm">
+                  <ToggleButton
+                    isActive={displayAs === 'points'}
+                    onClick={() => setDisplayAs('points')}
+                  >
+                    Pontos
+                  </ToggleButton>
+                  <ToggleButton
+                    isActive={displayAs === 'brl'}
+                    onClick={() => setDisplayAs('brl')}
+                  >
+                    R$
+                  </ToggleButton>
+                </div>
+              </div>
+            </header>
 
-        {personUnavailable ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-6 text-sm text-amber-700">
-            Your account is not linked to a person record yet. Contact support to
-            connect your CPF before collecting points and coupons.
-          </div>
-        ) : (
-          <WalletSummary
-            wallet={wallet}
-            displayAs={displayAs}
-            isLoading={walletLoading}
-            onRefresh={refreshWallet}
-          />
-        )}
+            {personUnavailable ? (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-6 text-sm text-amber-800">
+                <strong className="font-semibold">Atenção:</strong> Sua conta ainda não está vinculada a um registro de pessoa. 
+                Entre em contato com o suporte para conectar seu CPF antes de acumular pontos e cupons.
+              </div>
+            ) : (
+              <WalletSummary
+                wallet={wallet}
+                displayAs={displayAs}
+                isLoading={walletLoading}
+                onRefresh={refreshWallet}
+              />
+            )}
 
-        <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Available offers
-            </h2>
-            <button
-              type="button"
-              onClick={refreshOffers}
-              className="rounded-md border border-slate-300 px-3 py-1 text-sm text-slate-600 transition hover:bg-slate-100"
-            >
-              Refresh offers
-            </button>
-          </div>
+            <section className="flex flex-col gap-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-slate-900">
+                  Ofertas Disponíveis
+                </h2>
+                <button
+                  type="button"
+                  onClick={refreshOffers}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:shadow-sm"
+                >
+                  Atualizar Ofertas
+                </button>
+              </div>
 
-          {offersLoading ? (
-            <div className="rounded-md border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-              Loading offers…
-            </div>
-          ) : offers && offers.items.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {offers.items.map((offer) => (
-                <OfferCard key={offer.id} offer={offer} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-md border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-              No offers are currently active. Check back soon!
-            </div>
-          )}
-        </section>
+              {offersLoading ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center text-base text-slate-500">
+                  Carregando ofertas...
+                </div>
+              ) : offers && offers.items.length > 0 ? (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {offers.items.map((offer) => (
+                    <OfferCard key={offer.id} offer={offer} />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center text-base text-slate-500">
+                  Nenhuma oferta ativa no momento. Volte em breve!
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
       </div>
     </Protected>
   );
@@ -116,7 +120,7 @@ function ToggleButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md px-3 py-1 transition ${isActive ? 'bg-slate-900 text-white shadow' : 'text-slate-600 hover:bg-slate-100'}`}
+      className={`rounded-lg px-4 py-2 font-medium transition ${isActive ? 'bg-slate-900 text-white shadow' : 'text-slate-700 hover:bg-slate-100'}`}
     >
       {children}
     </button>

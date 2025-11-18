@@ -15,18 +15,17 @@ export function AppShell({ children }: PropsWithChildren) {
     {
       href: '/marketplace/dashboard',
       label: 'Marketplace',
-      visible: status === 'authenticated' && Boolean(user?.personId),
+      visible: true,
+    },
+    {
+      href: '/pdv',
+      label: 'PDV',
+      visible: true,
     },
     {
       href: '/admin/portal',
       label: 'Admin',
-      visible:
-        status === 'authenticated' && Boolean(isAdminRole(user?.role)),
-    },
-    {
-      href: '/login',
-      label: 'Login',
-      visible: status === 'unauthenticated',
+      visible: true,
     },
   ];
 
@@ -36,13 +35,13 @@ export function AppShell({ children }: PropsWithChildren) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-          <Link href="/" className="text-lg font-semibold text-slate-900">
-            Fidelity
+    <div className="min-h-screen bg-white text-slate-900">
+      <header className="bg-slate-900 text-white">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-6 py-4">
+          <Link href="/" className="text-xl font-bold">
+            Sistema de Fidelidade
           </Link>
-          <nav className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-600">
+          <nav className="flex flex-wrap items-center gap-6 text-sm font-medium">
             {links
               .filter((link) => link.visible)
               .map((link) => {
@@ -53,30 +52,47 @@ export function AppShell({ children }: PropsWithChildren) {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`transition-colors hover:text-slate-900 ${isActive ? 'text-slate-900' : ''}`}
+                    className={`transition-colors hover:text-white ${isActive ? 'text-white' : 'text-slate-300'}`}
                   >
                     {link.label}
                   </Link>
                 );
               })}
           </nav>
-          {status === 'authenticated' ? (
-            <div className="flex items-center gap-3 text-sm">
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-                {user?.role ?? 'Unknown'} role
-              </span>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="rounded-md border border-slate-300 px-3 py-1 text-slate-600 transition hover:bg-slate-100"
-              >
-                Sign out
-              </button>
-            </div>
-          ) : null}
+          <div className="flex items-center gap-3">
+            {status === 'authenticated' ? (
+              <>
+                <span className="text-sm text-slate-300">
+                  {user?.role}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="rounded-lg bg-white text-slate-900 px-4 py-2 text-sm font-medium transition hover:bg-slate-100"
+                >
+                  Sair
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-white hover:text-slate-200 transition"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/login"
+                  className="rounded-lg bg-blue-600 text-white px-5 py-2 text-sm font-medium transition hover:bg-blue-700"
+                >
+                  Cadastrar
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-10">
+      <main className="flex w-full flex-1 flex-col">
         {children}
       </main>
     </div>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, apiFetch } from '../lib/api-client';
 import type { AdminCouponOffer, PaginatedResponse } from '../lib/api-types';
+import { useAuth } from '../components/providers/auth-provider';
 
 type AdminOfferFilters = {
   entity_scope?: string | null;
@@ -13,6 +14,7 @@ type AdminOfferFilters = {
 };
 
 export function useAdminCouponOffers(filters: AdminOfferFilters = {}) {
+  const { status } = useAuth();
   const [data, setData] = useState<PaginatedResponse<AdminCouponOffer> | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,8 +50,13 @@ export function useAdminCouponOffers(filters: AdminOfferFilters = {}) {
   ]);
 
   useEffect(() => {
-    void fetchOffers();
-  }, [fetchOffers]);
+    // Only fetch when auth is ready
+    if (status === 'authenticated') {
+      void fetchOffers();
+    } else if (status === 'unauthenticated') {
+      setIsLoading(false);
+    }
+  }, [fetchOffers, status]);
 
   return {
     couponOffers: data,

@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiError } from '../lib/api-client';
 import type { WalletResponse } from '../lib/api-types';
+import { useAuth } from '../components/providers/auth-provider';
 
 export function useWallet(displayAs: 'points' | 'brl') {
+  const { status } = useAuth();
   const [data, setData] = useState<WalletResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,8 +28,13 @@ export function useWallet(displayAs: 'points' | 'brl') {
   }, [displayAs]);
 
   useEffect(() => {
-    void fetchWallet();
-  }, [fetchWallet]);
+    // Only fetch when auth is ready
+    if (status === 'authenticated') {
+      void fetchWallet();
+    } else if (status === 'unauthenticated') {
+      setIsLoading(false);
+    }
+  }, [fetchWallet, status]);
 
   return {
     wallet: data,

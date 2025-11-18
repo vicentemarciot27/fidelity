@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, apiFetch } from '../lib/api-client';
 import type { AdminCouponOffer, CouponOfferStats } from '../lib/api-types';
+import { useAuth } from '../components/providers/auth-provider';
 
 export function useAdminOfferDetail(offerId: string | null) {
+  const { status } = useAuth();
   const [offer, setOffer] = useState<AdminCouponOffer | null>(null);
   const [stats, setStats] = useState<CouponOfferStats | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -32,8 +34,13 @@ export function useAdminOfferDetail(offerId: string | null) {
   }, [offerId]);
 
   useEffect(() => {
-    void fetchDetail();
-  }, [fetchDetail]);
+    // Only fetch when auth is ready and we have an offerId
+    if (status === 'authenticated' && offerId) {
+      void fetchDetail();
+    } else if (status === 'unauthenticated' || !offerId) {
+      setIsLoading(false);
+    }
+  }, [fetchDetail, status, offerId]);
 
   return {
     offer,

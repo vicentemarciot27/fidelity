@@ -56,59 +56,76 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-      <h1 className="text-2xl font-semibold text-slate-900">Sign in</h1>
-      <p className="mt-2 text-sm text-slate-500">
-        Use your Fidelity account credentials. New users can register via the
-        FastAPI backend or Admin portal.
-      </p>
-
-      <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-        <label className="flex flex-col gap-1 text-sm text-slate-600">
-          Email
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="rounded-md border border-slate-300 px-3 py-2 text-base text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
-            autoComplete="email"
-            required
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm text-slate-600">
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="rounded-md border border-slate-300 px-3 py-2 text-base text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
-            autoComplete="current-password"
-            required
-          />
-        </label>
-
-        {error ? (
-          <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-            {error}
+    <div className="flex min-h-[calc(100vh-200px)] items-center justify-center px-6 py-12">
+      <div className="w-full max-w-md">
+        <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-lg">
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-bold text-slate-900">Entrar</h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Acesse sua conta do Sistema de Fidelidade
+            </p>
           </div>
-        ) : null}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex h-11 items-center justify-center rounded-md bg-slate-900 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+          <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-slate-700">
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="rounded-lg border border-slate-300 px-4 py-3 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                autoComplete="email"
+                placeholder="seu@email.com"
+                required
+              />
+            </div>
 
-      <Link
-        href="/"
-        className="mt-6 inline-block text-sm font-medium text-slate-600 underline decoration-slate-300 hover:text-slate-900"
-      >
-        Back to homepage
-      </Link>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-slate-700">
+                Senha
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="rounded-lg border border-slate-300 px-4 py-3 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            {error ? (
+              <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {error}
+              </div>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex h-12 items-center justify-center rounded-lg bg-slate-900 text-base font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmitting ? 'Entrando...' : 'Entrar'}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <Link
+              href="/"
+              className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+            >
+              ← Voltar para página inicial
+            </Link>
+          </div>
+        </div>
+
+        <p className="mt-4 text-center text-sm text-slate-600">
+          Novos usuários podem se registrar através do portal administrativo
+        </p>
+      </div>
     </div>
   );
 }

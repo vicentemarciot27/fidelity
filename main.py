@@ -2,17 +2,12 @@
 Main FastAPI application with organized imports
 """
 
-print("Alou")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-print("Alou")
 from database import engine
-print("Alou")
 from app.models import Base, create_views
-print("Alou")
 from app.core.config import APP_CONFIG, API_TAGS, SWAGGER_UI_PARAMETERS, CORS_CONFIG
-print("Alou")
 from app.routers import (
     auth_router,
     wallet_router,
@@ -27,7 +22,6 @@ from app.routers import (
     catalog_router,
     system_router
 )
-print("Alou")
 
 # Create FastAPI app with configuration
 app = FastAPI(
