@@ -48,7 +48,7 @@ export function CouponTypeForm({ onCreated }: CouponTypeFormProps) {
 
     try {
       await apiFetch('/admin/coupon-types', 'POST', payload);
-      showToast('Coupon type created successfully', 'success');
+      showToast('Tipo de cupom criado com sucesso', 'success');
       onCreated();
       setDiscountAmountBrl('');
       setDiscountPercentage('');
@@ -57,11 +57,11 @@ export function CouponTypeForm({ onCreated }: CouponTypeFormProps) {
     } catch (err) {
       if (err instanceof ApiError) {
         const detail = (err.body as { detail?: string })?.detail;
-        const errorMsg = detail ?? 'Failed to create coupon type.';
+        const errorMsg = detail ?? 'Falha ao criar tipo de cupom.';
         setError(errorMsg);
         showToast(errorMsg, 'error');
       } else {
-        const errorMsg = 'Unexpected error while creating coupon type.';
+        const errorMsg = 'Erro inesperado ao criar tipo de cupom.';
         setError(errorMsg);
         showToast(errorMsg, 'error');
       }
@@ -74,7 +74,7 @@ export function CouponTypeForm({ onCreated }: CouponTypeFormProps) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1 text-sm text-slate-600">
         <label>
-          Redeem type
+          Tipo de resgate
           <select
             value={redeemType}
             onChange={(event) =>
@@ -93,7 +93,7 @@ export function CouponTypeForm({ onCreated }: CouponTypeFormProps) {
 
       {redeemType === 'BRL' ? (
         <LabeledInput
-          label="Discount amount (BRL)"
+          label="Valor do desconto (R$)"
           type="number"
           min="0"
           step="0.01"
@@ -103,7 +103,7 @@ export function CouponTypeForm({ onCreated }: CouponTypeFormProps) {
         />
       ) : redeemType === 'PERCENTAGE' ? (
         <LabeledInput
-          label="Discount percentage"
+          label="Percentual de desconto"
           type="number"
           min="0"
           max="100"
@@ -114,7 +114,7 @@ export function CouponTypeForm({ onCreated }: CouponTypeFormProps) {
         />
       ) : (
         <LabeledInput
-          label="Valid SKUs (comma separated)"
+          label="SKUs válidos (separados por vírgula)"
           type="text"
           value={validSkus}
           onValueChange={setValidSkus}
@@ -130,7 +130,7 @@ export function CouponTypeForm({ onCreated }: CouponTypeFormProps) {
           onChange={(event) => setSkuSpecific(event.target.checked)}
           className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
         />
-        SKU specific
+        SKU específico
       </label>
 
       {error ? (
@@ -144,7 +144,7 @@ export function CouponTypeForm({ onCreated }: CouponTypeFormProps) {
         disabled={isSubmitting}
         className="inline-flex h-10 items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? 'Saving…' : 'Create coupon type'}
+        {isSubmitting ? 'Salvando…' : 'Criar tipo de cupom'}
       </button>
     </form>
   );

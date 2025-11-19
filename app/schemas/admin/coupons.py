@@ -36,6 +36,7 @@ class CouponOfferCreate(BaseModel):
     customer_segment: Optional[dict] = Field(None, description="Segmentação de clientes (JSONB)")
     initial_quantity: int = Field(0, ge=0, description="Quantidade inicial")
     max_per_customer: int = Field(0, ge=0, description="Máximo por cliente (0 = ilimitado)")
+    points_cost: int = Field(0, ge=0, description="Custo em pontos para adquirir o cupom")
     is_active: bool = Field(True, description="Se a oferta está ativa")
     start_at: Optional[datetime] = Field(None, description="Data de início")
     end_at: Optional[datetime] = Field(None, description="Data de término")
@@ -46,6 +47,7 @@ class CouponOfferUpdate(BaseModel):
     initial_quantity: Optional[int] = Field(None, ge=0, description="Quantidade inicial")
     current_quantity: Optional[int] = Field(None, ge=0, description="Quantidade atual (incremental)")
     max_per_customer: Optional[int] = Field(None, ge=0, description="Máximo por cliente")
+    points_cost: Optional[int] = Field(None, ge=0, description="Custo em pontos para adquirir o cupom")
     is_active: Optional[bool] = Field(None, description="Se a oferta está ativa")
     start_at: Optional[datetime] = Field(None, description="Data de início")
     end_at: Optional[datetime] = Field(None, description="Data de término")
@@ -60,6 +62,7 @@ class CouponOfferResponse(BaseModel):
     initial_quantity: int
     current_quantity: int
     max_per_customer: int
+    points_cost: int
     is_active: bool
     start_at: Optional[datetime]
     end_at: Optional[datetime]

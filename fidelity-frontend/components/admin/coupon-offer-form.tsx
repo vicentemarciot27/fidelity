@@ -27,6 +27,7 @@ export function CouponOfferForm({ couponTypes, onCreated }: CouponOfferFormProps
   const [couponTypeId, setCouponTypeId] = useState('');
   const [initialQuantity, setInitialQuantity] = useState('0');
   const [maxPerCustomer, setMaxPerCustomer] = useState('0');
+  const [pointsCost, setPointsCost] = useState('0');
   const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
   const [isActive, setIsActive] = useState(true);
@@ -55,6 +56,7 @@ export function CouponOfferForm({ couponTypes, onCreated }: CouponOfferFormProps
       coupon_type_id: couponTypeId,
       initial_quantity: Number(initialQuantity),
       max_per_customer: Number(maxPerCustomer),
+      points_cost: Number(pointsCost),
       is_active: isActive,
     };
 
@@ -68,7 +70,7 @@ export function CouponOfferForm({ couponTypes, onCreated }: CouponOfferFormProps
       try {
         payload.customer_segment = JSON.parse(segmentJson);
       } catch {
-        setError('Customer segment must be valid JSON.');
+        setError('Segmento de cliente deve ser um JSON válido.');
         setIsSubmitting(false);
         return;
       }
@@ -76,12 +78,13 @@ export function CouponOfferForm({ couponTypes, onCreated }: CouponOfferFormProps
 
     try {
       await apiFetch('/admin/coupon-offers', 'POST', payload);
-      showToast('Coupon offer created successfully', 'success');
+      showToast('Oferta de cupom criada com sucesso', 'success');
       onCreated();
       setEntityId('');
       setCouponTypeId('');
       setInitialQuantity('0');
       setMaxPerCustomer('0');
+      setPointsCost('0');
       setStartAt('');
       setEndAt('');
       setSegmentJson('');
@@ -89,11 +92,11 @@ export function CouponOfferForm({ couponTypes, onCreated }: CouponOfferFormProps
     } catch (err) {
       if (err instanceof ApiError) {
         const detail = (err.body as { detail?: string })?.detail;
-        const errorMsg = detail ?? 'Failed to create coupon offer.';
+        const errorMsg = detail ?? 'Falha ao criar oferta de cupom.';
         setError(errorMsg);
         showToast(errorMsg, 'error');
       } else {
-        const errorMsg = 'Unexpected error while creating coupon offer.';
+        const errorMsg = 'Erro inesperado ao criar oferta de cupom.';
         setError(errorMsg);
         showToast(errorMsg, 'error');
       }
@@ -125,7 +128,7 @@ export function CouponOfferForm({ couponTypes, onCreated }: CouponOfferFormProps
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="grid gap-4 md:grid-cols-2">
         <SelectField
-          label="Entity scope"
+          label="Escopo da entidade"
           value={entityScope}
           onChange={(value) =>
             setEntityScope(value as CouponOfferCreateRequest['entity_scope'])
@@ -135,18 +138,22 @@ export function CouponOfferForm({ couponTypes, onCreated }: CouponOfferFormProps
         <SelectField
           label={
             entityScope === 'CUSTOMER'
-              ? 'Customer'
+              ? 'Cliente'
               : entityScope === 'FRANCHISE'
-              ? 'Franchise'
-              : 'Store'
+              ? 'Franquia'
+              : 'Loja'
           }
           value={entityId}
           onChange={setEntityId}
           options={getEntityOptions()}
           placeholder={
             isLoadingEntities
-              ? 'Loading...'
-              : `Select ${entityScope.toLowerCase()}`
+              ? 'Carregando...'
+              : entityScope === 'CUSTOMER'
+              ? 'Selecione o cliente'
+              : entityScope === 'FRANCHISE'
+              ? 'Selecione a franquia'
+              : 'Selecione a loja'
           }
           required
           disabled={isLoadingEntities}
@@ -154,20 +161,20 @@ export function CouponOfferForm({ couponTypes, onCreated }: CouponOfferFormProps
       </div>
 
       <SelectField
-        label="Coupon type"
+        label="Tipo de cupom"
         value={couponTypeId}
         onChange={setCouponTypeId}
         options={couponTypes.map((type) => ({
           value: type.id,
           label: formatCouponTypeLabel(type),
         }))}
-        placeholder="Select coupon type"
+        placeholder="Selecione o tipo de cupom"
         required
       />
 
       <div className="grid gap-4 md:grid-cols-2">
         <LabeledInput
-          label="Initial quantity"
+          label="Quantidade inicial"
           type="number"
           min="0"
           value={initialQuantity}
@@ -175,24 +182,32 @@ export function CouponOfferForm({ couponTypes, onCreated }: CouponOfferFormProps
           required
         />
         <LabeledInput
-          label="Max per customer (0 = unlimited)"
+          label="Máximo por cliente (0 = ilimitado)"
           type="number"
           min="0"
           value={maxPerCustomer}
           onValueChange={setMaxPerCustomer}
           required
         />
+        <LabeledInput
+          label="Custo em pontos por cupom"
+          type="number"
+          min="0"
+          value={pointsCost}
+          onValueChange={setPointsCost}
+          required
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <LabeledInput
-          label="Start at"
+          label="Início em"
           type="datetime-local"
           value={startAt}
           onValueChange={setStartAt}
         />
         <LabeledInput
-          label="End at"
+          label="Fim em"
           type="datetime-local"
           value={endAt}
           onValueChange={setEndAt}
@@ -206,11 +221,11 @@ export function CouponOfferForm({ couponTypes, onCreated }: CouponOfferFormProps
           onChange={(event) => setIsActive(event.target.checked)}
           className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
         />
-        Offer is active
+        Oferta está ativa
       </label>
 
       <label className="flex flex-col gap-1 text-sm text-slate-600">
-        Customer segment (JSON, optional)
+        Segmento de cliente (JSON, opcional)
         <textarea
           value={segmentJson}
           onChange={(event) => setSegmentJson(event.target.value)}
@@ -231,12 +246,12 @@ export function CouponOfferForm({ couponTypes, onCreated }: CouponOfferFormProps
         disabled={isSubmitting || couponTypes.length === 0}
         className="inline-flex h-10 items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? 'Saving…' : 'Create coupon offer'}
+        {isSubmitting ? 'Salvando…' : 'Criar oferta de cupom'}
       </button>
 
       {couponTypes.length === 0 ? (
         <p className="text-xs text-slate-500">
-          Create at least one coupon type before publishing offers.
+          Crie pelo menos um tipo de cupom antes de publicar ofertas.
         </p>
       ) : null}
     </form>
@@ -283,7 +298,7 @@ function SelectField({
         disabled={disabled}
         className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <option value="">{placeholder ?? 'Select an option'}</option>
+        <option value="">{placeholder ?? 'Selecione uma opção'}</option>
         {normalized.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -322,10 +337,10 @@ function formatCouponTypeLabel(type: AdminCouponType) {
     return `BRL • R$ ${Number(type.discount_amount_brl).toFixed(2)}`;
   }
   if (type.redeem_type === 'PERCENTAGE' && type.discount_amount_percentage) {
-    return `Percentage • ${Number(type.discount_amount_percentage)}%`;
+    return `Percentual • ${Number(type.discount_amount_percentage)}%`;
   }
   if (type.redeem_type === 'FREE_SKU') {
-    return 'Free SKU';
+    return 'SKU Grátis';
   }
   return type.redeem_type;
 }

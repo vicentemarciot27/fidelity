@@ -1,9 +1,11 @@
 """
 Wallet routes for checking points and coupons
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from typing import Optional
+import math
 
 from database import get_db
 from ..models import user as user_models
@@ -133,4 +135,74 @@ def get_wallet(
     return {
         "balances": balances,
         "coupons": coupons
+    }
+
+@router.get("/transactions", summary="Listar transações de pontos do usuário")
+def get_point_transactions(
+    scope: Optional[str] = Query(None, description="Filtrar por escopo"),
+    scope_id: Optional[str] = Query(None, description="Filtrar por ID do escopo"),
+    page: int = Query(1, ge=1, description="Número da página"),
+    page_size: int = Query(20, ge=1, le=100, description="Itens por página"),
+    current_user: user_models.AppUser = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista todas as transações de pontos do usuário atual com paginação e filtros.
+    
+    - **scope**: Filtro por escopo (GLOBAL, CUSTOMER, FRANCHISE, STORE)
+    - **scope_id**: ID do escopo para filtrar
+    - **page**: Número da página
+    - **page_size**: Quantidade de itens por página
+    
+    Retorna transações ordenadas por data (mais recentes primeiro).
+    Requer autenticação via token de acesso (Bearer token).
+    """
+    if not current_user.person_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User does not have an associated person record"
+        )
+    
+    # Construir query base
+    query = db.query(points_models.PointTransaction).filter(
+        points_models.PointTransaction.person_id == current_user.person_id
+    )
+    
+    # Aplicar filtros
+    if scope:
+        query = query.filter(points_models.PointTransaction.scope == scope)
+    
+    if scope_id:
+        query = query.filter(points_models.PointTransaction.scope_id == scope_id)
+    
+    # Contar total
+    total = query.count()
+    
+    # Aplicar ordenação e paginação
+    transactions = query.order_by(
+        points_models.PointTransaction.created_at.desc()
+    ).offset((page - 1) * page_size).limit(page_size).all()
+    
+    # Formatar resultados
+    results = []
+    for txn in transactions:
+        results.append({
+            "id": txn.id,
+            "person_id": str(txn.person_id),
+            "scope": txn.scope,
+            "scope_id": str(txn.scope_id) if txn.scope_id else None,
+            "store_id": str(txn.store_id) if txn.store_id else None,
+            "order_id": txn.order_id,
+            "delta": txn.delta,
+            "details": txn.details,
+            "created_at": txn.created_at.isoformat(),
+            "expires_at": txn.expires_at.isoformat() if txn.expires_at else None
+        })
+    
+    return {
+        "items": results,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": math.ceil(total / page_size) if page_size > 0 else 0
     }

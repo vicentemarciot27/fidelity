@@ -19,8 +19,9 @@ import base64
 from database import get_db
 from ..models import user as user_models
 from ..models import coupons as coupon_models
+from ..models import points as points_models
 from ..models import system as system_models
-from ..models.enums import CouponStatusEnum, RedeemTypeEnum
+from ..models.enums import CouponStatusEnum, RedeemTypeEnum, ScopeEnum
 from ..schemas.coupons import BuyCouponRequest, BuyCouponResponse
 from ..core.security import get_current_active_user
 
@@ -140,6 +141,7 @@ def get_offers(
             "initial_quantity": offer.initial_quantity,
             "current_quantity": offer.current_quantity,
             "max_per_customer": offer.max_per_customer,
+            "points_cost": offer.points_cost,
             "is_active": offer.is_active,
             "start_at": offer.start_at.isoformat() if offer.start_at else None,
             "end_at": offer.end_at.isoformat() if offer.end_at else None,
@@ -206,6 +208,7 @@ def get_offer_details(
         "initial_quantity": offer.initial_quantity,
         "current_quantity": offer.current_quantity,
         "max_per_customer": offer.max_per_customer,
+        "points_cost": offer.points_cost,
         "is_active": offer.is_active,
         "start_at": offer.start_at.isoformat() if offer.start_at else None,
         "end_at": offer.end_at.isoformat() if offer.end_at else None,
@@ -317,6 +320,30 @@ def buy_coupon(
         # Ex: verificar idade, região, tags, etc.
         pass
     
+    entity_scope_value = offer.entity_scope.value if isinstance(offer.entity_scope, ScopeEnum) else offer.entity_scope
+    points_cost = offer.points_cost or 0
+    available_points = None
+    if points_cost > 0:
+        balance_query = (
+            db.query(func.coalesce(func.sum(points_models.PointTransaction.delta), 0))
+            .filter(
+                points_models.PointTransaction.person_id == current_user.person_id,
+                points_models.PointTransaction.scope == offer.entity_scope,
+                or_(
+                    points_models.PointTransaction.expires_at == None,
+                    points_models.PointTransaction.expires_at > func.now()
+                ),
+                points_models.PointTransaction.scope_id == offer.entity_id
+            )
+        )
+        available_points = balance_query.scalar() or 0
+        
+        if available_points < points_cost:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Insufficient points to acquire this offer. Required: {points_cost}, available: {available_points}"
+            )
+    
     try:
         # Gerar código de cupom
         code = generate_coupon_code()
@@ -335,7 +362,21 @@ def buy_coupon(
         
         # Persistir alterações
         db.add(coupon)
-        db.commit()
+        
+        # Registrar custo em pontos, se aplicável
+        if points_cost > 0:
+            deduction = points_models.PointTransaction(
+                person_id=current_user.person_id,
+                scope=offer.entity_scope,
+                scope_id=offer.entity_id,
+                delta=-points_cost,
+                details={
+                    "reason": "coupon_purchase",
+                    "offer_id": str(offer.id),
+                    "points_cost": points_cost
+                }
+            )
+            db.add(deduction)
         
         # Gerar QR code
         qr_data = generate_qr_code(code)
@@ -345,7 +386,13 @@ def buy_coupon(
             actor_user_id=current_user.id,
             action="COUPON_ISSUE",
             target_table="coupon",
-            target_id=str(coupon.id)
+            target_id=str(coupon.id),
+            after={
+                "points_cost": points_cost,
+                "offer_id": str(offer.id),
+                "entity_scope": entity_scope_value,
+                "entity_id": str(offer.entity_id),
+            }
         )
         db.add(audit)
         db.commit()
@@ -400,6 +447,77 @@ def get_my_coupons(
                 "redeemed_at": coupon.redeemed_at.isoformat() if coupon.redeemed_at else None,
                 "offer": {
                     "entity_scope": offer.entity_scope,
+                    "points_cost": offer.points_cost,
+                    "is_active": offer.is_active,
+                },
+                "coupon_type": {
+                    "redeem_type": coupon_type.redeem_type,
+                    "discount_amount_brl": float(coupon_type.discount_amount_brl) if coupon_type.discount_amount_brl else None,
+                    "discount_amount_percentage": float(coupon_type.discount_amount_percentage) if coupon_type.discount_amount_percentage else None,
+                }
+            }
+            results.append(coupon_data)
+    
+    return results
+
+@coupons_router.get("/my-with-codes", summary="Listar meus cupons com códigos e QR")
+def get_my_coupons_with_codes(
+    offer_id: Optional[UUID4] = None,
+    current_user: user_models.AppUser = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista cupons do usuário atual com códigos e QR codes.
+    Pode filtrar por offer_id específico.
+    
+    Retorna apenas cupons não resgatados (ISSUED ou RESERVED).
+    
+    Requer autenticação via token de acesso (Bearer token).
+    """
+    if not current_user.person_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User does not have an associated person record"
+        )
+    
+    # Query base
+    query = db.query(coupon_models.Coupon).filter(
+        coupon_models.Coupon.issued_to_person_id == current_user.person_id,
+        coupon_models.Coupon.status.in_([CouponStatusEnum.ISSUED, CouponStatusEnum.RESERVED])
+    )
+    
+    # Filtrar por offer_id se fornecido
+    if offer_id:
+        query = query.filter(coupon_models.Coupon.offer_id == offer_id)
+    
+    coupons = query.all()
+    
+    results = []
+    for coupon in coupons:
+        offer = db.query(coupon_models.CouponOffer).filter(
+            coupon_models.CouponOffer.id == coupon.offer_id
+        ).first()
+        coupon_type = db.query(coupon_models.CouponType).filter(
+            coupon_models.CouponType.id == offer.coupon_type_id
+        ).first() if offer else None
+        
+        if offer and coupon_type:
+            # Gerar código temporário para exibição (não armazenado)
+            # Por segurança, usamos hash reverso apenas para display do cupom ao dono
+            code_display = f"COUPON-{str(coupon.id)[:8].upper()}"
+            qr_data = generate_qr_code(code_display)
+            
+            coupon_data = {
+                "id": str(coupon.id),
+                "offer_id": str(coupon.offer_id),
+                "status": coupon.status,
+                "issued_at": coupon.issued_at.isoformat(),
+                "code": code_display,
+                "qr": qr_data,
+                "offer": {
+                    "entity_scope": offer.entity_scope,
+                    "entity_id": str(offer.entity_id),
+                    "points_cost": offer.points_cost,
                     "is_active": offer.is_active,
                 },
                 "coupon_type": {

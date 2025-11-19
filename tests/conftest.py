@@ -23,6 +23,20 @@ from app.models import views as views_models
 from app.core.security import get_password_hash
 
 # Helper functions to generate unique test data
+
+
+class AuthHeaders(dict):
+    """Dictionary-like helper that also exposes authenticated user context."""
+
+    def __init__(self, headers, user, person, customer):
+        super().__init__(headers)
+        self.user = user
+        self.person = person
+        self.customer = customer
+        self.points_scope = "CUSTOMER"
+        self.points_scope_id = customer.id if customer else None
+
+
 def generate_unique_cpf():
     """Generate a unique CPF for testing"""
     return f"{random.randint(10000000000, 99999999999)}"
@@ -286,9 +300,9 @@ def sample_coupon(db, sample_coupon_offer, sample_person):
 
 
 @pytest.fixture
-def auth_headers(client, sample_user, db):
+def auth_headers(client, db, sample_customer):
     """
-    Get authentication headers for a user
+    Get authentication headers and context for a user with seeded points.
     """
     # Create a fresh user with known credentials for login
     person = user_models.Person(
@@ -310,6 +324,20 @@ def auth_headers(client, sample_user, db):
         is_active=True
     )
     db.add(user)
+    db.flush()
+    
+    # Seed default CUSTOMER-scope points so tests can redeem offers with point cost
+    points_transaction = points_models.PointTransaction(
+        person_id=person.id,
+        scope="CUSTOMER",
+        scope_id=sample_customer.id,
+        delta=1000,
+        details={
+            "reason": "test_seed",
+            "source": "auth_headers_fixture"
+        }
+    )
+    db.add(points_transaction)
     db.commit()
     
     response = client.post(
@@ -320,7 +348,7 @@ def auth_headers(client, sample_user, db):
         }
     )
     token = response.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    return AuthHeaders({"Authorization": f"Bearer {token}"}, user, person, sample_customer)
 
 
 @pytest.fixture

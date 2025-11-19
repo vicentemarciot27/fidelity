@@ -79,7 +79,7 @@ export function WalletSummary({
 
       <div className="mt-8 pt-6 border-t border-slate-200">
         <h3 className="text-lg font-bold text-slate-900 mb-4">
-          Cupons Disponíveis
+          Seus Cupons
         </h3>
         {isLoading ? (
           <Placeholder message="Carregando cupons..." />
@@ -110,7 +110,7 @@ function formatScope(scope: string) {
     case 'GLOBAL':
       return 'Global';
     case 'CUSTOMER':
-      return 'Cliente';
+      return 'Rede';
     case 'FRANCHISE':
       return 'Franquia';
     case 'STORE':
@@ -186,7 +186,7 @@ function CouponCard({ coupon }: { coupon: WalletResponse['coupons'][number] }) {
 
   return (
     <a 
-      href={`/marketplace/offers/${coupon.offer_id}?generate=true`}
+      href={`/marketplace/my-coupons?offer_id=${coupon.offer_id}`}
       className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:shadow-md hover:border-slate-300 cursor-pointer"
     >
       <div>

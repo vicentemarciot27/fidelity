@@ -18,6 +18,11 @@ export function AppShell({ children }: PropsWithChildren) {
       visible: true,
     },
     {
+      href: '/marketplace/my-coupons',
+      label: 'Meus Cupons',
+      visible: true,
+    },
+    {
       href: '/pdv',
       label: 'PDV',
       visible: true,

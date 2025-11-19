@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { Protected } from '../../../components/auth/protected';
 import { OfferCard } from '../../../components/marketplace/offer-card';
@@ -39,19 +40,30 @@ export default function MarketplaceDashboard() {
                     Confira seu saldo de pontos e explore as ofertas disponíveis
                   </p>
                 </div>
-                <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm shadow-sm">
-                  <ToggleButton
-                    isActive={displayAs === 'points'}
-                    onClick={() => setDisplayAs('points')}
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/marketplace/transactions"
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:shadow-sm"
                   >
-                    Pontos
-                  </ToggleButton>
-                  <ToggleButton
-                    isActive={displayAs === 'brl'}
-                    onClick={() => setDisplayAs('brl')}
-                  >
-                    R$
-                  </ToggleButton>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    Ver extrato
+                  </Link>
+                  <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm shadow-sm">
+                    <ToggleButton
+                      isActive={displayAs === 'points'}
+                      onClick={() => setDisplayAs('points')}
+                    >
+                      Pontos
+                    </ToggleButton>
+                    <ToggleButton
+                      isActive={displayAs === 'brl'}
+                      onClick={() => setDisplayAs('brl')}
+                    >
+                      R$
+                    </ToggleButton>
+                  </div>
                 </div>
               </div>
             </header>
@@ -83,6 +95,9 @@ export default function MarketplaceDashboard() {
                   Atualizar Ofertas
                 </button>
               </div>
+              <p className="text-sm text-slate-500 -mt-4">
+                A emissão de cada cupom consome pontos do escopo indicado na oferta. Verifique seu saldo antes de comprar.
+              </p>
 
               {offersLoading ? (
                 <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center text-base text-slate-500">

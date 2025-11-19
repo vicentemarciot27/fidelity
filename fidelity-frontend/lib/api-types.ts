@@ -58,6 +58,7 @@ export interface CouponOffer {
   initial_quantity: number;
   current_quantity: number;
   max_per_customer: number;
+  points_cost: number;
   is_active: boolean;
   start_at: string | null;
   end_at: string | null;
@@ -97,6 +98,7 @@ export interface CouponOfferCreateRequest {
   coupon_type_id: string;
   initial_quantity: number;
   max_per_customer: number;
+  points_cost: number;
   start_at?: string | null;
   end_at?: string | null;
   is_active?: boolean;
@@ -126,6 +128,7 @@ export interface AdminCouponOffer {
   initial_quantity: number;
   current_quantity: number;
   max_per_customer: number;
+  points_cost: number;
   is_active: boolean;
   start_at: string | null;
   end_at: string | null;
@@ -166,5 +169,41 @@ export interface Store {
   name: string;
   location?: Record<string, unknown>;
   created_at: string;
+}
+
+export interface PointTransaction {
+  id: number;
+  person_id: string;
+  scope: 'GLOBAL' | 'CUSTOMER' | 'FRANCHISE' | 'STORE';
+  scope_id: string | null;
+  store_id: string | null;
+  order_id: string | null;
+  delta: number;
+  details: Record<string, unknown>;
+  created_at: string;
+  expires_at: string | null;
+}
+
+export interface MyCouponWithCode {
+  id: string;
+  offer_id: string;
+  status: 'ISSUED' | 'RESERVED' | 'REDEEMED' | 'CANCELLED' | 'EXPIRED';
+  issued_at: string;
+  code: string;
+  qr: {
+    format: string;
+    data: string;
+  };
+  offer: {
+    entity_scope: 'CUSTOMER' | 'FRANCHISE' | 'STORE';
+    entity_id: string;
+    points_cost: number;
+    is_active: boolean;
+  };
+  coupon_type: {
+    redeem_type: 'BRL' | 'PERCENTAGE' | 'FREE_SKU';
+    discount_amount_brl: number | null;
+    discount_amount_percentage: number | null;
+  };
 }
 

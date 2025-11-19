@@ -61,6 +61,17 @@ export function OfferCard({ offer }: OfferCardProps) {
           <p className="text-sm text-slate-600">{discountLabel.subtitle}</p>
         </div>
 
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-3.866 0-7 1.79-7 4s3.134 4 7 4 7-1.79 7-4-3.134-4-7-4zm0 0V4m0 12v4" />
+          </svg>
+          <span>
+            {offer.points_cost > 0
+              ? `${formatPoints(offer.points_cost)} pts para emitir`
+              : 'Sem custo em pontos'}
+          </span>
+        </div>
+
         {offer.start_at || offer.end_at ? (
           <div className="text-xs text-slate-500 flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -102,7 +113,7 @@ function getScopeBadgeConfig(scope: 'CUSTOMER' | 'FRANCHISE' | 'STORE') {
   switch (scope) {
     case 'CUSTOMER':
       return {
-        label: 'Cliente',
+        label: 'Rede',
         bg: 'bg-blue-100',
         text: 'text-blue-700',
       };
@@ -171,5 +182,9 @@ function formatDateRange(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function formatPoints(value: number) {
+  return new Intl.NumberFormat('pt-BR').format(value);
 }
 

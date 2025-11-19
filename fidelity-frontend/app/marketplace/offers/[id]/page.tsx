@@ -9,6 +9,7 @@ import { ApiError, apiFetch } from '../../../../lib/api-client';
 import { isAdminRole } from '../../../../lib/roles';
 import { useOfferDetail } from '../../../../hooks/use-offer-detail';
 import { useEntityName } from '../../../../hooks/use-entity-names';
+import { useWallet } from '../../../../hooks/use-wallet';
 import type { BuyCouponResponse } from '../../../../lib/api-types';
 import { showToast } from '../../../../components/ui/toast';
 
@@ -26,8 +27,26 @@ export default function OfferDetailPage() {
     offer?.entity_scope || 'CUSTOMER',
     offer?.entity_id || ''
   );
+  const { wallet, isLoading: walletLoading, refresh: refreshWallet } = useWallet('points');
 
   const canBuy = Boolean(user?.personId) && !isAdminRole(user?.role ?? null);
+
+  // Calculate points requirements BEFORE useEffect
+  const scopeBadgeConfig = offer ? getScopeBadgeConfig(offer.entity_scope) : null;
+  const requiredPoints = offer?.points_cost ?? 0;
+  const needsPoints = requiredPoints > 0;
+  const matchingBalance =
+    offer && wallet?.balances.find(
+      (balance) =>
+        balance.scope === offer.entity_scope &&
+        (balance.scope_id ?? '') === offer.entity_id,
+    );
+  const availablePoints = matchingBalance?.points ?? 0;
+  const waitingBalanceInfo = needsPoints && walletLoading;
+  const hasSufficientPoints =
+    !needsPoints || (!walletLoading && availablePoints >= requiredPoints);
+  const insufficientPoints = needsPoints && !waitingBalanceInfo && !hasSufficientPoints;
+  const scopeLabel = scopeBadgeConfig?.label;
 
   const handleBuyCoupon = async () => {
     if (!offer) return;
@@ -41,6 +60,7 @@ export default function OfferDetailPage() {
       setPurchaseResult(response);
       showToast('Coupon issued successfully!', 'success');
       await refresh();
+      await refreshWallet();
     } catch (err) {
       if (err instanceof ApiError) {
         const detail = (err.body as { detail?: string })?.detail;
@@ -59,13 +79,32 @@ export default function OfferDetailPage() {
 
   // Auto-generate coupon if coming from wallet
   useEffect(() => {
-    if (shouldGenerate && offer && canBuy && !purchaseResult && !isPurchasing) {
+    if (
+      shouldGenerate &&
+      offer &&
+      canBuy &&
+      !purchaseResult &&
+      !isPurchasing &&
+      (!needsPoints || (!walletLoading && hasSufficientPoints))
+    ) {
       handleBuyCoupon();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldGenerate, offer, canBuy]);
-
-  const scopeBadgeConfig = offer ? getScopeBadgeConfig(offer.entity_scope) : null;
+  }, [shouldGenerate, offer, canBuy, needsPoints, walletLoading, hasSufficientPoints]);
+  const buttonDisabled =
+    !offer ||
+    !canBuy ||
+    isPurchasing ||
+    (offer?.current_quantity ?? 0) <= 0 ||
+    waitingBalanceInfo ||
+    insufficientPoints;
+  const buttonLabel = (() => {
+    if (!canBuy) return 'Login necessário';
+    if (!offer || (offer.current_quantity ?? 0) <= 0) return 'Estoque esgotado';
+    if (waitingBalanceInfo) return 'Verificando saldo...';
+    if (insufficientPoints) return 'Pontos insuficientes';
+    return isPurchasing ? 'Emitindo cupom...' : 'Obter cupom';
+  })();
 
   return (
     <Protected>
@@ -175,6 +214,62 @@ export default function OfferDetailPage() {
                   </div>
                 ) : null}
 
+                <section className="mt-8 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                      Custo por cupom
+                    </p>
+                    <p className="text-3xl font-bold text-slate-900">
+                      {needsPoints ? `${formatPoints(requiredPoints)} pts` : 'Nenhum ponto necessário'}
+                    </p>
+                    <p className="text-sm text-slate-600 mt-2">
+                      {needsPoints
+                        ? `Será debitado automaticamente do escopo ${scopeLabel ?? offer.entity_scope}.`
+                        : 'Esta oferta não consome seu saldo de pontos.'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-white p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                      Seu saldo neste escopo
+                    </p>
+                    {needsPoints ? (
+                      waitingBalanceInfo ? (
+                        <p className="text-sm text-slate-500 mt-2">Verificando saldo disponível...</p>
+                      ) : matchingBalance ? (
+                        <>
+                          <p className="text-3xl font-bold text-slate-900">
+                            {formatPoints(availablePoints)} pts
+                          </p>
+                          <p className="text-sm text-slate-600 mt-2">
+                            Última atualização em tempo real. Ganhe mais pontos consumindo no escopo correspondente.
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-slate-500 mt-2">
+                          Nenhum saldo encontrado para este escopo ainda. Acumule pontos realizando compras elegíveis.
+                        </p>
+                      )
+                    ) : (
+                      <p className="text-sm text-slate-500 mt-2">
+                        Como não há custo em pontos, qualquer usuário autenticado pode emitir este cupom enquanto houver estoque.
+                      </p>
+                    )}
+                  </div>
+                </section>
+
+                {needsPoints ? (
+                  insufficientPoints ? (
+                    <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                      Você precisa de pelo menos {formatPoints(requiredPoints)} pontos no escopo{' '}
+                      {scopeLabel ?? offer.entity_scope} para emitir este cupom.
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-xs text-slate-500">
+                      Os pontos serão debitados automaticamente no momento da emissão.
+                    </p>
+                  )
+                ) : null}
+
                 <section className="mt-8 pt-6 border-t border-slate-200">
                   <h2 className="text-xl font-bold text-slate-900 mb-4">Detalhes da Oferta</h2>
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -246,14 +341,21 @@ export default function OfferDetailPage() {
                     </div>
                   </section>
                 ) : (
-                  <button
-                    type="button"
-                    disabled={!canBuy || isPurchasing || offer.current_quantity <= 0}
-                    onClick={handleBuyCoupon}
-                    className="mt-8 w-full inline-flex h-12 items-center justify-center rounded-lg bg-slate-900 px-6 text-base font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isPurchasing ? 'Emitindo cupom...' : offer.current_quantity <= 0 ? 'Estoque esgotado' : canBuy ? 'Obter cupom' : 'Login necessário'}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      disabled={buttonDisabled}
+                      onClick={handleBuyCoupon}
+                      className="mt-8 w-full inline-flex h-12 items-center justify-center rounded-lg bg-slate-900 px-6 text-base font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {buttonLabel}
+                    </button>
+                    {waitingBalanceInfo ? (
+                      <p className="mt-3 text-sm text-slate-500 text-center">
+                        Verificando seu saldo antes de permitir a emissão...
+                      </p>
+                    ) : null}
+                  </>
                 )}
               </article>
             ) : null}
@@ -268,7 +370,7 @@ function getScopeBadgeConfig(scope: 'CUSTOMER' | 'FRANCHISE' | 'STORE') {
   switch (scope) {
     case 'CUSTOMER':
       return {
-        label: 'Cliente',
+        label: 'Rede',
         bg: 'bg-blue-100',
         text: 'text-blue-700',
       };
@@ -308,5 +410,9 @@ function formatTimestamp(value: string | undefined) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function formatPoints(value: number) {
+  return new Intl.NumberFormat('pt-BR').format(value);
 }
 

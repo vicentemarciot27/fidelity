@@ -41,6 +41,7 @@ class CouponOffer(Base):
     initial_quantity = Column(Integer, nullable=False, default=0)
     current_quantity = Column(Integer, nullable=False, default=0)
     max_per_customer = Column(Integer, nullable=False, default=0)
+    points_cost = Column(Integer, nullable=False, default=0, server_default="0")
     is_active = Column(Boolean, nullable=False, default=True)
     start_at = Column(TIMESTAMP(timezone=True))
     end_at = Column(TIMESTAMP(timezone=True))
@@ -51,6 +52,7 @@ class CouponOffer(Base):
         CheckConstraint("current_quantity <= initial_quantity"),
         CheckConstraint("initial_quantity >= 0"),
         CheckConstraint("current_quantity >= 0"),
+        CheckConstraint("points_cost >= 0"),
     )
     
     coupon_type = relationship("CouponType", back_populates="offers")

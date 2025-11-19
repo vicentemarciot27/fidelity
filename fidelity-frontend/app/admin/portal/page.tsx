@@ -135,7 +135,14 @@ export default function AdminPortalPage() {
                       {couponTypeItems.map((type) => (
                         <tr key={type.id} className="hover:bg-slate-50 transition">
                           <td className="px-4 py-3 font-medium text-slate-900">
-                            {type.redeem_type}
+                            {type.redeem_type === 'BRL'
+                              ? 'Desconto (R$)'
+                              : type.redeem_type === 'PERCENTAGE'
+                              ? 'Desconto (%)'
+                              : type.redeem_type === 'FREE_SKU'
+                              ? 'SKU Grátis'
+                              : type.redeem_type
+                            }
                           </td>
                           <td className="px-4 py-3 text-slate-600">{type.sku_specific ? 'Sim' : 'Não'}</td>
                           <td className="px-4 py-3 text-slate-600">
@@ -206,6 +213,7 @@ export default function AdminPortalPage() {
                       <tr className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                         <th className="px-4 py-3">Escopo</th>
                         <th className="px-4 py-3">Estoque</th>
+                        <th className="px-4 py-3">Custo</th>
                         <th className="px-4 py-3">Janela</th>
                         <th className="px-4 py-3">Status</th>
                         <th className="px-4 py-3 text-right">Ações</th>
@@ -215,11 +223,24 @@ export default function AdminPortalPage() {
                       {couponOfferItems.map((offer) => (
                         <tr key={offer.id} className="hover:bg-slate-50 transition">
                           <td className="px-4 py-3">
-                            <div className="font-medium text-slate-900">{offer.entity_scope}</div>
+                            <div className="font-medium text-slate-900">
+                              {offer.entity_scope === 'CUSTOMER'
+                                ? 'Cliente'
+                                : offer.entity_scope === 'FRANCHISE'
+                                ? 'Franquia'
+                                : offer.entity_scope === 'STORE'
+                                ? 'Loja'
+                                : offer.entity_scope}
+                            </div>
                             <div className="text-xs text-slate-500">{offer.entity_id}</div>
                           </td>
                           <td className="px-4 py-3 text-slate-600 font-medium">
                             {offer.current_quantity}/{offer.initial_quantity}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {offer.points_cost > 0
+                              ? `${formatPoints(offer.points_cost)} pts`
+                              : 'Grátis'}
                           </td>
                           <td className="px-4 py-3 text-slate-600 text-xs">
                             {formatWindow(offer.start_at, offer.end_at)}
@@ -316,6 +337,14 @@ export default function AdminPortalPage() {
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Metric label="Quantidade inicial" value={selectedOffer.initial_quantity} />
                     <Metric label="Quantidade atual" value={selectedOffer.current_quantity} />
+                    <Metric
+                      label="Custo em pontos"
+                      value={
+                        selectedOffer.points_cost > 0
+                          ? `${formatPoints(selectedOffer.points_cost)} pts`
+                          : 'Grátis'
+                      }
+                    />
                     <Metric label="Status" value={selectedOffer.is_active ? 'Ativa' : 'Inativa'} />
                     <Metric
                       label="Janela de resgate"
@@ -344,6 +373,10 @@ function Placeholder({ message }: { message: string }) {
       {message}
     </div>
   );
+}
+
+function formatPoints(value: number) {
+  return new Intl.NumberFormat('pt-BR').format(value);
 }
 
 function formatDiscount(type: AdminCouponType) {

@@ -298,6 +298,7 @@ def seed_complete_test_data():
             initial_quantity=100,
             current_quantity=95,
             max_per_customer=5,
+            points_cost=40,
             is_active=True,
             start_at=now - timedelta(days=7),
             end_at=now + timedelta(days=30)
@@ -313,6 +314,7 @@ def seed_complete_test_data():
             initial_quantity=50,
             current_quantity=45,
             max_per_customer=3,
+            points_cost=50,
             is_active=True,
             start_at=now - timedelta(days=3),
             end_at=now + timedelta(days=60)
@@ -328,6 +330,7 @@ def seed_complete_test_data():
             initial_quantity=30,
             current_quantity=28,
             max_per_customer=2,
+            points_cost=30,
             is_active=True,
             start_at=now,
             end_at=now + timedelta(days=15)
@@ -507,12 +510,12 @@ def seed_complete_test_data():
             person_id=person.id,
             scope="CUSTOMER",
             scope_id=customer.id,
-            delta=100,
+            delta=10000,
             details={"reason": "welcome_bonus", "campaign": "new_user_2024"},
             expires_at=now + timedelta(days=365)
         )
         session.add(transaction3)
-        print("  ✓ Transação +100 pontos (Bônus de boas-vindas)")
+        print("  ✓ Transação +10000 pontos (Bônus de boas-vindas)")
 
         # Transaction 4 - Points redemption (negative)
         transaction4 = points.PointTransaction(
@@ -539,6 +542,79 @@ def seed_complete_test_data():
         session.add(transaction5)
         print("  ✓ Transação +200 pontos (Campanha franquia)")
 
+        # ============================================
+        # 12. DATA FOR REGULAR USER (test-user@email.com)
+        # ============================================
+        print("\n👤 Criando dados para usuário regular...")
+        
+        # Order for regular user
+        order_regular = orders.Order(
+            store_id=store.id,
+            person_id=person_regular.id,
+            total_brl=Decimal("100.00"),
+            tax_brl=Decimal("8.00"),
+            items={
+                "items": [
+                    {"sku_id": str(sku1.id), "name": "Pizza Margherita", "quantity": 2, "price": 45.90}
+                ]
+            },
+            source="PDV",
+            external_id="ORDER_REGULAR_001"
+        )
+        session.add(order_regular)
+        print("  ✓ Pedido: R$ 100,00 (PDV)")
+
+        # Points for regular user - from order
+        transaction_regular1 = points.PointTransaction(
+            person_id=person_regular.id,
+            scope="STORE",
+            scope_id=store.id,
+            store_id=store.id,
+            order_id=str(order_regular.id),
+            delta=250,  # 100 * 2.5 (store rule)
+            details={"order_total": 100.00, "points_per_brl": 2.5},
+            expires_at=now + timedelta(days=180)
+        )
+        session.add(transaction_regular1)
+        print("  ✓ Transação +250 pontos (Pedido)")
+
+        # Welcome bonus for regular user
+        transaction_regular2 = points.PointTransaction(
+            person_id=person_regular.id,
+            scope="CUSTOMER",
+            scope_id=customer.id,
+            delta=5000,
+            details={"reason": "welcome_bonus", "campaign": "new_user_2024"},
+            expires_at=now + timedelta(days=365)
+        )
+        session.add(transaction_regular2)
+        print("  ✓ Transação +5000 pontos (Bônus de boas-vindas)")
+
+        # Coupons for regular user
+        code_regular1 = "REGULARUSER001"
+        code_regular1_hash = hashlib.sha256(code_regular1.encode()).digest()
+        coupon_regular1 = coupons.Coupon(
+            offer_id=offer_customer.id,
+            issued_to_person_id=person_regular.id,
+            code_hash=code_regular1_hash,
+            status="ISSUED"
+        )
+        session.add(coupon_regular1)
+        print(f"  ✓ Cupom ISSUED: {code_regular1}")
+
+        code_regular2 = "REGULARUSER002"
+        code_regular2_hash = hashlib.sha256(code_regular2.encode()).digest()
+        coupon_regular2 = coupons.Coupon(
+            offer_id=offer_franchise.id,
+            issued_to_person_id=person_regular.id,
+            code_hash=code_regular2_hash,
+            status="ISSUED"
+        )
+        session.add(coupon_regular2)
+        print(f"  ✓ Cupom ISSUED: {code_regular2}")
+
+        session.flush()
+
         # Commit all changes
         session.commit()
         
@@ -563,13 +639,19 @@ def seed_complete_test_data():
         print(f"🎫 Coupon Types: 3 tipos (BRL, PERCENTAGE, FREE_SKU)")
         print(f"🎁 Coupon Offers: 3 ofertas ativas")
         print(f"🖼️  Offer Assets: 3 imagens")
-        print(f"🎟️  Coupons: 3 cupons (1 ISSUED, 1 RESERVED, 1 REDEEMED)")
+        print(f"🎟️  Coupons Admin: 3 cupons (1 ISSUED, 1 RESERVED, 1 REDEEMED)")
         print(f"   - {code1} (ISSUED)")
         print(f"   - {code2} (RESERVED)")
         print(f"   - {code3} (REDEEMED)")
-        print(f"🛒 Orders: 3 pedidos (R$ 289,40 total)")
-        print(f"⭐ Point Transactions: 5 transações")
-        print(f"   - Saldo atual: {212 + 375 + 100 - 50 + 200} pontos")
+        print(f"🎟️  Coupons Regular: 2 cupons (ISSUED)")
+        print(f"   - {code_regular1} (ISSUED)")
+        print(f"   - {code_regular2} (ISSUED)")
+        print(f"🛒 Orders Admin: 3 pedidos (R$ 289,40 total)")
+        print(f"🛒 Orders Regular: 1 pedido (R$ 100,00 total)")
+        print(f"⭐ Point Transactions Admin: 5 transações")
+        print(f"   - Saldo atual: {212 + 375 + 10000 - 50 + 200} pontos")
+        print(f"⭐ Point Transactions Regular: 2 transações")
+        print(f"   - Saldo atual: {250 + 5000} pontos")
         print("="*60)
         print("\n🎉 Dados de teste criados com sucesso!\n")
         
